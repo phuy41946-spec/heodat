@@ -56,11 +56,17 @@ function formatMoney(n) {
 
 // ── Firebase Admin ──
 let serviceAccount;
-try {
-    serviceAccount = require('./heodat-1bbef-firebase-adminsdk-fbsvc-2fc8133bea.json');
-} catch (e) {
-    console.error('❌ Không tìm thấy file service account key!');
-    process.exit(1);
+if (process.env.FIREBASE_SERVICE_ACCOUNT) {
+    // Render / production: đọc từ env var (JSON string)
+    serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT);
+} else {
+    // Local: đọc từ file
+    try {
+        serviceAccount = require('./heodat-1bbef-firebase-adminsdk-fbsvc-2fc8133bea.json');
+    } catch (e) {
+        console.error('❌ Thiếu FIREBASE_SERVICE_ACCOUNT env hoặc file service account key!');
+        process.exit(1);
+    }
 }
 
 admin.initializeApp({ credential: admin.credential.cert(serviceAccount) });
