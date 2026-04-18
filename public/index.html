@@ -1,0 +1,989 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Heo Đất - Trại Heo Vui Vẻ 🐷</title>
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🐷</text></svg>">
+    <meta name="description" content="Heo Đất - Game nuôi heo vui vẻ #1 Việt Nam. Mua heo giống 100 KC, chăm sóc hàng ngày, bán heo nhận kim cương!">
+    <meta property="og:title" content="Heo Đất - Trại Heo Vui Vẻ 🐷">
+    <meta property="og:description" content="Game nuôi heo vui vẻ #1 Việt Nam. Mua heo giống 100 KC, chăm sóc mỗi ngày, nhận kim cương!">
+    <meta property="og:type" content="website">
+    <link rel="stylesheet" href="style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Quicksand:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+</head>
+<body>
+
+<!-- ============ HEADER ============ -->
+<header class="header" id="header">
+    <div class="container header-inner">
+        <a href="#home" class="logo">
+            <span class="logo-icon">🐷</span>
+            <span class="logo-text">Heo Đất</span>
+        </a>
+        <nav class="nav" id="mainNav">
+            <a href="#home">Trang chủ</a>
+            <a href="#how">Cách chơi</a>
+            <a href="#rates">Bảng giá</a>
+            <a href="#testimonials">Đánh giá</a>
+            <a href="#faq">Hỏi đáp</a>
+        </nav>
+        <div class="header-actions" id="headerActions">
+            <button class="btn btn-outline" onclick="openModal('loginModal')">Đăng nhập</button>
+            <button class="btn btn-primary" onclick="openModal('registerModal')">Đăng ký</button>
+        </div>
+        <button class="mobile-menu-btn" onclick="toggleMobileMenu()">
+            <span></span><span></span><span></span>
+        </button>
+    </div>
+    <!-- Mobile Menu -->
+    <div class="mobile-menu" id="mobileMenu">
+        <a href="#home" onclick="toggleMobileMenu()">🏠 Trang chủ</a>
+        <a href="#how" onclick="toggleMobileMenu()">📖 Cách chơi</a>
+        <a href="#rates" onclick="toggleMobileMenu()">💎 Bảng giá</a>
+        <a href="#testimonials" onclick="toggleMobileMenu()">⭐ Đánh giá</a>
+        <a href="#faq" onclick="toggleMobileMenu()">❓ Hỏi đáp</a>
+        <div class="mobile-menu-actions">
+            <button class="btn btn-outline btn-block" onclick="openModal('loginModal');toggleMobileMenu()">Đăng nhập</button>
+            <button class="btn btn-primary btn-block" onclick="openModal('registerModal');toggleMobileMenu()">Đăng ký</button>
+        </div>
+    </div>
+</header>
+
+<!-- ============ HERO ============ -->
+<section class="hero" id="home">
+    <div class="hero-particles" id="heroParticles"></div>
+    <div class="container hero-inner">
+        <div class="hero-content">
+            <div class="hero-badge">🎮 Game nuôi heo #1 Việt Nam</div>
+            <h1>Nuôi heo vui vẻ 🐷<br>Nhận <span class="highlight">Kim Cương</span> 💎</h1>
+            <p class="hero-desc">Xây dựng trại heo của riêng bạn! Mua heo giống, chăm sóc mỗi ngày, xem heo lớn lên từ <strong>Baby → Teen → Adult</strong>, bán heo nhận kim cương!</p>
+            <div class="hero-buttons">
+                <button class="btn btn-primary btn-lg" onclick="openModal('registerModal')">
+                    <span>🐷</span> Bắt đầu nuôi heo
+                </button>
+                <a href="#how" class="btn btn-outline btn-lg">
+                    <span>📖</span> Cách chơi
+                </a>
+            </div>
+            <div class="hero-stats">
+                <div class="stat">
+                    <span class="stat-number">100</span>
+                    <span class="stat-label">KC / con heo</span>
+                </div>
+                <div class="stat">
+                    <span class="stat-number">đến 108</span>
+                    <span class="stat-label">💎 KC khi bán</span>
+                </div>
+                <div class="stat">
+                    <span class="stat-number">7.5%</span>
+                    <span class="stat-label">Lãi suất / năm</span>
+                </div>
+            </div>
+        </div>
+        <div class="hero-image">
+            <div class="farm-scene">
+                <div class="farm-sky">
+                    <div class="sun">🌞</div>
+                    <div class="cloud cloud-1">☁️</div>
+                    <div class="cloud cloud-2">⛅</div>
+                    <div class="cloud cloud-3">☁️</div>
+                    <div class="bird bird-1">🐦</div>
+                    <div class="bird bird-2">🕊️</div>
+                </div>
+                <div class="farm-ground">
+                    <div class="barn">🏠</div>
+                    <div class="tree tree-1">🌳</div>
+                    <div class="tree tree-2">🌲</div>
+                    <div class="flower flower-1">🌻</div>
+                    <div class="flower flower-2">🌷</div>
+                    <div class="flower flower-3">🌸</div>
+                    <div class="fence">🏗️</div>
+                </div>
+                <div class="farm-pigs">
+                    <div class="farm-pig fp-1"><span>🐷</span><span class="pig-shadow"></span></div>
+                    <div class="farm-pig fp-2"><span>🐖</span><span class="pig-shadow"></span></div>
+                    <div class="farm-pig fp-3"><span>🐷</span><span class="pig-shadow"></span></div>
+                    <div class="farm-pig fp-4"><span>🐗</span><span class="pig-shadow"></span></div>
+                    <div class="farm-pig fp-5"><span>🐷</span><span class="pig-shadow"></span></div>
+                </div>
+                <div class="floating-coins">
+                    <span class="fcoin fc-1">💎</span>
+                    <span class="fcoin fc-2">🪙</span>
+                    <span class="fcoin fc-3">💎</span>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="hero-wave">
+        <svg viewBox="0 0 1440 120" preserveAspectRatio="none">
+            <path d="M0,60 C360,120 720,0 1440,60 L1440,120 L0,120 Z" fill="#fff"></path>
+        </svg>
+    </div>
+</section>
+
+<!-- ============ FEATURES STRIP ============ -->
+<section class="features-strip">
+    <div class="container">
+        <div class="strip-grid">
+            <div class="strip-item"><span class="strip-icon">🐷</span><span>100 KC / con heo</span></div>
+            <div class="strip-item"><span class="strip-icon">💎</span><span>Lên đến 108 KC</span></div>
+            <div class="strip-item"><span class="strip-icon">📈</span><span>Lãi +8 KC / năm</span></div>
+            <div class="strip-item"><span class="strip-icon">🏠</span><span>Trại heo miễn phí</span></div>
+            <div class="strip-item"><span class="strip-icon">∞</span><span>Không giới hạn heo</span></div>
+        </div>
+    </div>
+</section>
+
+<!-- ============ HOW TO PLAY ============ -->
+<section class="how-section" id="how">
+    <div class="container">
+        <h2 class="section-title">Cách chơi <span class="highlight">Heo Đất</span></h2>
+        <p class="section-desc">6 bước đơn giản từ người mới đến chủ trại chuyên nghiệp</p>
+        <div class="steps-timeline">
+            <div class="step" data-aos>
+                <div class="step-connector"></div>
+                <div class="step-dot">1</div>
+                <div class="step-card">
+                    <div class="step-icon">📝</div>
+                    <h3>Đăng ký tài khoản</h3>
+                    <p>Tạo tài khoản miễn phí chỉ mất 30 giây. Ngay lập tức nhận được <strong>1 trại heo</strong> để bắt đầu nuôi heo!</p>
+                </div>
+            </div>
+            <div class="step" data-aos>
+                <div class="step-connector"></div>
+                <div class="step-dot">2</div>
+                <div class="step-card">
+                    <div class="step-icon">💰</div>
+                    <h3>Nạp tiền vào ví</h3>
+                    <p>Nạp tiền qua chuyển khoản ngân hàng, ví điện tử. Tối thiểu 100K. Tiền vào ví ngay lập tức.</p>
+                </div>
+            </div>
+            <div class="step" data-aos>
+                <div class="step-connector"></div>
+                <div class="step-dot">3</div>
+                <div class="step-card">
+                    <div class="step-icon">🐷</div>
+                    <h3>Múa heo giống</h3>
+                    <p>Chọn loại heo: <strong>Heo con (3 tháng)</strong>, <strong>Heo lứa (6 tháng)</strong>, hoặc <strong>Heo nái (1 năm)</strong>. Mỗi con 100 KC. Mua bao nhiêu tùy thích!</p>
+                </div>
+            </div>
+            <div class="step" data-aos>
+                <div class="step-connector"></div>
+                <div class="step-dot">4</div>
+                <div class="step-card">
+                    <div class="step-icon">🍽️</div>
+                    <h3>Chăm sóc hàng ngày</h3>
+                    <p>Mỗi ngày vào cho heo ăn 🍽️ và dọn chuồng 🧹. Heo có <strong>thanh vui vẻ 😊</strong> và <strong>sức khỏe ❤️</strong>. Chăm tốt = heo vui = bạn vui!</p>
+                </div>
+            </div>
+            <div class="step" data-aos>
+                <div class="step-connector"></div>
+                <div class="step-dot">5</div>
+                <div class="step-card">
+                    <div class="step-icon">📈</div>
+                    <h3>Xem heo lớn lên</h3>
+                    <p>Heo trải qua 3 giai đoạn: <strong>🐷 Baby → 🐖 Teen → 🐗 Adult</strong>. Theo dõi thanh tiến trình và đợi ngày xuất chuồng!</p>
+                </div>
+            </div>
+            <div class="step" data-aos>
+                <div class="step-connector"></div>
+                <div class="step-dot">6</div>
+                <div class="step-card">
+                    <div class="step-icon">💎</div>
+                    <h3>Bán heo nhận KC</h3>
+                    <p>Heo đến kỳ hạn → bán ngay nhận kim cương! Tích lũy KC càng nhiều, bạn càng giàu!</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- ============ RATES ============ -->
+<section class="rates-section" id="rates">
+    <div class="container">
+        <h2 class="section-title">Bảng giá <span class="highlight">heo giống</span> 🐷</h2>
+        <p class="section-desc">Mỗi con heo giống 100 KC 💎 — kỳ hạn càng dài, kim cương càng nhiều!</p>
+        <div class="rates-grid">
+            <!-- 3 tháng -->
+            <div class="rate-card" data-aos>
+                <div class="rate-ribbon">⚡ Nhanh</div>
+                <div class="rate-header">
+                    <div class="rate-period">3 tháng</div>
+                    <div class="rate-piggy-wrap">
+                        <span class="rate-piggy">🐷</span>
+                        <span class="rate-piggy-glow"></span>
+                    </div>
+                    <div class="rate-badge">Heo con</div>
+                </div>
+                <div class="rate-body">
+                    <div class="rate-value">
+                        <span class="rate-diamond">💎</span>
+                        <span class="rate-number">101</span>
+                        <span class="rate-unit">Kim cương</span>
+                    </div>
+                    <div class="rate-profit">
+                        <span class="profit-label">Lợi nhuận</span>
+                        <span class="profit-value">+1 KC (+1%)</span>
+                    </div>
+                    <div class="rate-details">
+                        <div class="rate-detail-row">
+                            <span>� Giá mua</span>
+                            <strong>100 KC</strong>
+                        </div>
+                        <div class="rate-detail-row">
+                            <span>📈 Lãi suất</span>
+                            <strong>+1 KC</strong>
+                        </div>
+                        <div class="rate-detail-row">
+                            <span>📅 Thời gian</span>
+                            <strong>90 ngày</strong>
+                        </div>
+                        <div class="rate-detail-row">
+                            <span>🐷 Giai đoạn</span>
+                            <strong>Baby → Teen</strong>
+                        </div>
+                        <div class="rate-detail-row">
+                            <span>🍽️ Chăm sóc</span>
+                            <strong>2 lần / ngày</strong>
+                        </div>
+                    </div>
+                    <button class="btn btn-primary btn-block" onclick="buyPig(3)">Mua heo con 🐷</button>
+                </div>
+            </div>
+
+            <!-- 6 tháng -->
+            <div class="rate-card featured" data-aos>
+                <div class="rate-ribbon">🔥 Hot</div>
+                <div class="rate-header">
+                    <div class="rate-period">6 tháng</div>
+                    <div class="rate-piggy-wrap">
+                        <span class="rate-piggy">🐖</span>
+                        <span class="rate-piggy-glow gold"></span>
+                    </div>
+                    <div class="rate-badge gold">Heo lứa — Phổ biến nhất!</div>
+                </div>
+                <div class="rate-body">
+                    <div class="rate-value">
+                        <span class="rate-diamond">💎</span>
+                        <span class="rate-number">103</span>
+                        <span class="rate-unit">Kim cương</span>
+                    </div>
+                    <div class="rate-profit gold">
+                        <span class="profit-label">Lợi nhuận</span>
+                        <span class="profit-value">+3 KC (+3%)</span>
+                    </div>
+                    <div class="rate-details">
+                        <div class="rate-detail-row">
+                            <span>� Giá mua</span>
+                            <strong>100 KC</strong>
+                        </div>
+                        <div class="rate-detail-row">
+                            <span>📈 Lãi suất</span>
+                            <strong>+3 KC</strong>
+                        </div>
+                        <div class="rate-detail-row">
+                            <span>📅 Thời gian</span>
+                            <strong>180 ngày</strong>
+                        </div>
+                        <div class="rate-detail-row">
+                            <span>🐖 Giai đoạn</span>
+                            <strong>Baby → Teen → Adult</strong>
+                        </div>
+                        <div class="rate-detail-row">
+                            <span>🍽️ Chăm sóc</span>
+                            <strong>2 lần / ngày</strong>
+                        </div>
+                        <div class="rate-detail-row highlight-row">
+                            <span>⭐ Đặc biệt</span>
+                            <strong>Được chọn nhiều nhất</strong>
+                        </div>
+                    </div>
+                    <button class="btn btn-gold btn-block" onclick="buyPig(6)">Mua heo lứa 🐖</button>
+                </div>
+            </div>
+
+            <!-- 1 năm -->
+            <div class="rate-card" data-aos>
+                <div class="rate-ribbon">💰 Lời nhất</div>
+                <div class="rate-header">
+                    <div class="rate-period">1 năm</div>
+                    <div class="rate-piggy-wrap">
+                        <span class="rate-piggy">🐗</span>
+                        <span class="rate-piggy-glow"></span>
+                    </div>
+                    <div class="rate-badge">Heo nái</div>
+                </div>
+                <div class="rate-body">
+                    <div class="rate-value">
+                        <span class="rate-diamond">💎</span>
+                        <span class="rate-number">108</span>
+                        <span class="rate-unit">Kim cương</span>
+                    </div>
+                    <div class="rate-profit">
+                        <span class="profit-label">Lợi nhuận</span>
+                        <span class="profit-value">+8 KC (+8%)</span>
+                    </div>
+                    <div class="rate-details">
+                        <div class="rate-detail-row">
+                            <span>� Giá mua</span>
+                            <strong>100 KC</strong>
+                        </div>
+                        <div class="rate-detail-row">
+                            <span>📈 Lãi suất</span>
+                            <strong>+8 KC</strong>
+                        </div>
+                        <div class="rate-detail-row">
+                            <span>📅 Thời gian</span>
+                            <strong>365 ngày</strong>
+                        </div>
+                        <div class="rate-detail-row">
+                            <span>🐗 Giai đoạn</span>
+                            <strong>Baby → Teen → Adult</strong>
+                        </div>
+                        <div class="rate-detail-row">
+                            <span>🍽️ Chăm sóc</span>
+                            <strong>2 lần / ngày</strong>
+                        </div>
+                        <div class="rate-detail-row highlight-row">
+                            <span>💰 Đặc biệt</span>
+                            <strong>Kim cương nhiều nhất!</strong>
+                        </div>
+                    </div>
+                    <button class="btn btn-primary btn-block" onclick="buyPig(12)">Mua heo nái 🐗</button>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- ============ GROWTH STAGES ============ -->
+<section class="growth-section">
+    <div class="container">
+        <h2 class="section-title">Giai đoạn <span class="highlight">trưởng thành</span> 🐷</h2>
+        <p class="section-desc">Xem heo lớn lên mỗi ngày — từ Baby dễ thương đến Adult mập mạp!</p>
+        <div class="growth-timeline">
+            <div class="growth-stage" data-aos>
+                <div class="growth-emoji">🐷</div>
+                <div class="growth-info">
+                    <h3>Baby</h3>
+                    <p>0% — 33% tiến trình</p>
+                    <span class="growth-desc">Heo con nhỏ xinh, cần được chăm sóc cẩn thận. Cho ăn đầy đủ để heo mau lớn!</span>
+                </div>
+            </div>
+            <div class="growth-arrow">→</div>
+            <div class="growth-stage" data-aos>
+                <div class="growth-emoji">🐖</div>
+                <div class="growth-info">
+                    <h3>Teen</h3>
+                    <p>34% — 66% tiến trình</p>
+                    <span class="growth-desc">Heo đang lớn, ăn nhiều hơn, chạy nhảy vui vẻ. Dọn chuồng sạch sẽ nhé!</span>
+                </div>
+            </div>
+            <div class="growth-arrow">→</div>
+            <div class="growth-stage" data-aos>
+                <div class="growth-emoji">🐗</div>
+                <div class="growth-info">
+                    <h3>Adult</h3>
+                    <p>67% — 100% tiến trình</p>
+                    <span class="growth-desc">Heo trưởng thành mập mạp! Sắp đến ngày xuất chuồng, chuẩn bị nhận kim cương!</span>
+                </div>
+            </div>
+            <div class="growth-arrow">→</div>
+            <div class="growth-stage ready" data-aos>
+                <div class="growth-emoji">💎</div>
+                <div class="growth-info">
+                    <h3>Xuất chuồng!</h3>
+                    <p>100% — Đáo hạn</p>
+                    <span class="growth-desc">Bán heo ngay để nhận kim cương!</span>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- ============ TESTIMONIALS ============ -->
+<section class="testimonials-section" id="testimonials">
+    <div class="container">
+        <h2 class="section-title">Chủ trại nói gì về <span class="highlight">Heo Đất</span>?</h2>
+        <p class="section-desc">Hàng ngàn chủ trại đang nuôi heo vui vẻ mỗi ngày</p>
+        <div class="testimonials-grid">
+            <div class="testimonial-card" data-aos>
+                <div class="testimonial-stars">⭐⭐⭐⭐⭐</div>
+                <p class="testimonial-text">"Mình nuôi 20 con heo 6 tháng, mỗi lần bán được 103 KC/con. Tích lũy kim cương rất vui! 🐷💎"</p>
+                <div class="testimonial-author">
+                    <span class="testimonial-avatar">👩</span>
+                    <div>
+                        <strong>Nguyễn Thị Hoa</strong>
+                        <span>Chủ trại — 6 tháng</span>
+                    </div>
+                </div>
+            </div>
+            <div class="testimonial-card" data-aos>
+                <div class="testimonial-stars">⭐⭐⭐⭐⭐</div>
+                <p class="testimonial-text">"Game dễ chơi, mỗi ngày chỉ cần vào cho heo ăn và dọn chuồng. Xem heo lớn lên từ Baby đến Adult rất vui!"</p>
+                <div class="testimonial-author">
+                    <span class="testimonial-avatar">👨</span>
+                    <div>
+                        <strong>Trần Văn Minh</strong>
+                        <span>Chủ trại — 3 tháng</span>
+                    </div>
+                </div>
+            </div>
+            <div class="testimonial-card" data-aos>
+                <div class="testimonial-stars">⭐⭐⭐⭐⭐</div>
+                <p class="testimonial-text">"Mình chọn nuôi heo 1 năm, được 108 KC/con. Kiên nhẫn chút nhưng lời nhiều hơn! Recommend cho ai thích đầu tư dài hạn 💰"</p>
+                <div class="testimonial-author">
+                    <span class="testimonial-avatar">👩‍💼</span>
+                    <div>
+                        <strong>Lê Thị Mai</strong>
+                        <span>Chủ trại — 1 năm</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- ============ FAQ ============ -->
+<section class="faq-section" id="faq">
+    <div class="container">
+        <h2 class="section-title">Câu hỏi <span class="highlight">thường gặp</span> ❓</h2>
+        <p class="section-desc">Giải đáp mọi thắc mắc về game Heo Đất</p>
+        <div class="faq-list">
+            <div class="faq-item" onclick="toggleFaq(this)">
+                <div class="faq-q"><span>Mua heo giống tốn bao nhiêu?</span><span class="faq-toggle">+</span></div>
+                <div class="faq-a"><p>Mỗi con heo giống có giá cố định <strong>100 KC</strong> cho tất cả loại (3 tháng, 6 tháng, 1 năm). Bạn nạp tiền để đổi KC rồi mua bao nhiêu con tùy thích!</p></div>
+            </div>
+            <div class="faq-item" onclick="toggleFaq(this)">
+                <div class="faq-q"><span>Kim cương (KC) là gì?</span><span class="faq-toggle">+</span></div>
+                <div class="faq-a"><p>Kim cương là đơn vị tiền tệ trong game. <strong>1 KC = 1,000 VNĐ</strong>. Khi mua heo 100K bạn dùng 100 KC, khi bán heo bạn nhận lại nhiều KC hơn (101, 103, hoặc 108 KC tùy kỳ hạn).</p></div>
+            </div>
+            <div class="faq-item" onclick="toggleFaq(this)">
+                <div class="faq-q"><span>Tôi có thể bán heo trước hạn không?</span><span class="faq-toggle">+</span></div>
+                <div class="faq-a"><p>Không. Heo chỉ có thể bán khi đã đến ngày đáo hạn (xuất chuồng). Điều này giúp heo có thời gian lớn lên và mang lại kim cương cho bạn.</p></div>
+            </div>
+            <div class="faq-item" onclick="toggleFaq(this)">
+                <div class="faq-q"><span>Không chăm heo có bị phạt không?</span><span class="faq-toggle">+</span></div>
+                <div class="faq-a"><p>Không bị phạt! Hệ thống chỉ nhắc nhở bạn chăm sóc heo. Thanh vui vẻ và sức khỏe sẽ giảm nếu không chăm, nhưng heo vẫn lớn bình thường và bạn vẫn nhận đủ KC khi bán.</p></div>
+            </div>
+            <div class="faq-item" onclick="toggleFaq(this)">
+                <div class="faq-q"><span>Tối đa nuôi được bao nhiêu heo?</span><span class="faq-toggle">+</span></div>
+                <div class="faq-a"><p><strong>Không giới hạn!</strong> Bạn muốn nuôi bao nhiêu con cũng được. Trại heo của bạn có thể mở rộng vô hạn.</p></div>
+            </div>
+            <div class="faq-item" onclick="toggleFaq(this)">
+                <div class="faq-q"><span>Heo có mấy giai đoạn trưởng thành?</span><span class="faq-toggle">+</span></div>
+                <div class="faq-a"><p>Heo có 3 giai đoạn: <strong>🐷 Baby</strong> (0-33%), <strong>🐖 Teen</strong> (34-66%), <strong>🐗 Adult</strong> (67-100%). Mỗi giai đoạn heo sẽ thay đổi hình dạng trông rất dễ thương!</p></div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- ============ CTA ============ -->
+<section class="cta-section">
+    <div class="container">
+        <div class="cta-card">
+            <div class="cta-content">
+                <h2>Sẵn sàng nuôi heo chưa? 🐷</h2>
+                <p>Đăng ký ngay hôm nay — nhận trại heo miễn phí, bắt đầu nuôi heo ngay!</p>
+                <button class="btn btn-gold btn-lg" onclick="openModal('registerModal')">
+                    🐷 Tạo trại heo ngay — Miễn phí!
+                </button>
+            </div>
+            <div class="cta-pigs">
+                <span class="cta-pig cp-1">🐷</span>
+                <span class="cta-pig cp-2">🐖</span>
+                <span class="cta-pig cp-3">🐗</span>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- ============ FOOTER ============ -->
+<footer class="footer">
+    <div class="container">
+        <div class="footer-grid">
+            <div class="footer-brand">
+                <div class="logo"><span class="logo-icon">🐷</span><span class="logo-text">Heo Đất</span></div>
+                <p>Game nuôi heo vui vẻ #1 Việt Nam. Mua heo giống, chăm sóc hàng ngày, bán heo nhận kim cương!</p>
+                <div class="footer-social">
+                    <a href="#">📘</a><a href="#">📷</a><a href="#">🐦</a><a href="#">📺</a>
+                </div>
+            </div>
+            <div class="footer-links">
+                <h4>Trò chơi</h4>
+                <a href="#home">Trang chủ</a>
+                <a href="#how">Cách chơi</a>
+                <a href="#rates">Bảng giá</a>
+            </div>
+            <div class="footer-links">
+                <h4>Hỗ trợ</h4>
+                <a href="#faq">Câu hỏi thường gặp</a>
+                <a href="#">Điều khoản sử dụng</a>
+                <a href="#">Chính sách bảo mật</a>
+                <a href="#">Liên hệ hỗ trợ</a>
+            </div>
+            <div class="footer-contact">
+                <h4>Liên hệ</h4>
+                <p>📧 contact@heodat.vn</p>
+                <p>📞 1900-HEODAT (1900-436328)</p>
+                <p>📍 TP. Hồ Chí Minh, Việt Nam</p>
+                <p>⏰ Hỗ trợ 24/7</p>
+            </div>
+        </div>
+        <div class="footer-bottom">
+            <p>© 2026 Heo Đất. All rights reserved. Made with 💝 by Heo Đất Team</p>
+        </div>
+    </div>
+</footer>
+
+<!-- ============ MODALS ============ -->
+
+<!-- Login -->
+<div class="modal-overlay" id="loginModal">
+    <div class="modal">
+        <button class="modal-close" onclick="closeModal('loginModal')">×</button>
+        <div class="modal-header">
+            <span class="modal-icon">🐷</span>
+            <h2>Đăng nhập</h2>
+            <p>Chào mừng trở lại trại heo!</p>
+        </div>
+        <form onsubmit="handleLogin(event)">
+            <div class="form-group">
+                <label>📧 Email</label>
+                <input type="email" id="loginEmail" placeholder="Nhập email..." required>
+            </div>
+            <div class="form-group">
+                <label>🔒 Mật khẩu</label>
+                <input type="password" id="loginPassword" placeholder="Nhập mật khẩu..." required>
+            </div>
+            <button type="submit" class="btn btn-primary btn-block btn-lg">Đăng nhập 🐷</button>
+            <p class="modal-switch" style="margin-top:8px"><a href="#" onclick="handleForgotPassword();return false">Quên mật khẩu?</a></p>
+            <p class="modal-switch">Chưa có tài khoản? <a href="#" onclick="switchModal('loginModal','registerModal')">Đăng ký ngay</a></p>
+        </form>
+    </div>
+</div>
+
+<!-- Register -->
+<div class="modal-overlay" id="registerModal">
+    <div class="modal">
+        <button class="modal-close" onclick="closeModal('registerModal')">×</button>
+        <div class="modal-header">
+            <span class="modal-icon">🐷</span>
+            <h2>Tạo trại heo</h2>
+            <p>Nhận ngay trại heo miễn phí, bắt đầu nuôi heo!</p>
+        </div>
+        <form onsubmit="handleRegister(event)">
+            <div class="form-group">
+                <label>👤 Tên chủ trại</label>
+                <input type="text" id="regName" placeholder="VD: Trại Heo Hạnh Phúc..." required>
+            </div>
+            <div class="form-group">
+                <label>📧 Email</label>
+                <input type="email" id="regEmail" placeholder="email@example.com" required>
+            </div>
+            <div class="form-group">
+                <label>📱 Số điện thoại</label>
+                <input type="tel" id="regPhone" placeholder="0912 345 678" required>
+            </div>
+            <div class="form-group">
+                <label>🔒 Mật khẩu</label>
+                <input type="password" id="regPassword" placeholder="Tối thiểu 6 ký tự" required minlength="6">
+            </div>
+            <button type="submit" class="btn btn-primary btn-block btn-lg">Tạo trại heo 🏠</button>
+            <p class="modal-switch">Đã có tài khoản? <a href="#" onclick="switchModal('registerModal','loginModal')">Đăng nhập</a></p>
+        </form>
+    </div>
+</div>
+
+<!-- ============ FARM MODAL ============ -->
+<div class="modal-overlay" id="farmModal">
+    <div class="modal modal-farm">
+        <button class="modal-close" onclick="closeModal('farmModal')">×</button>
+
+        <!-- Farm Top Bar -->
+        <div class="farm-topbar">
+            <div class="farm-user">
+                <span class="farm-user-avatar">🧑‍🌾</span>
+                <div class="farm-user-info">
+                    <strong id="farmOwner">Chủ trại</strong>
+                    <span class="farm-level" id="farmLevel">Lv.1 — Người mới</span>
+                </div>
+            </div>
+            <div class="farm-wallet">
+                <div class="wallet-item wallet-money">
+                    <span>�</span>
+                    <span id="walletBalance">0</span>
+                    <span class="wallet-unit">KC</span>
+                    <button class="btn btn-sm btn-primary" onclick="openModal('topupModal')">+ Nạp</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Daily Reward Banner -->
+        <div class="daily-reward" id="dailyReward" style="display:none;">
+            <span>🎁</span>
+            <span>Thưởng đăng nhập hàng ngày!</span>
+            <button class="btn btn-gold btn-sm" onclick="claimDailyReward()">Nhận thưởng</button>
+        </div>
+
+        <!-- Notifications -->
+        <div class="farm-notifications" id="farmNotifications"></div>
+
+        <!-- Stats Overview -->
+        <div class="farm-stats-bar">
+            <div class="farm-stat-item">
+                <span class="fs-label">🐷 Đang nuôi</span>
+                <span class="fs-value" id="statActive">0</span>
+            </div>
+            <div class="farm-stat-item">
+                <span class="fs-label">🎉 Sẵn sàng bán</span>
+                <span class="fs-value" id="statReady">0</span>
+            </div>
+            <div class="farm-stat-item">
+                <span class="fs-label">✅ Đã bán</span>
+                <span class="fs-value" id="statSold">0</span>
+            </div>
+            <div class="farm-stat-item">
+                <span class="fs-label">💎 Tổng KC kiếm</span>
+                <span class="fs-value" id="statTotalKC">0</span>
+            </div>
+            <div class="farm-stat-item">
+                <span class="fs-label">🏆 Thành tích</span>
+                <span class="fs-value" id="statAchievements">0/9</span>
+            </div>
+        </div>
+
+        <!-- Tabs -->
+        <div class="farm-tabs">
+            <button class="farm-tab active" onclick="switchTab('pigpen')">🐷 Chuồng heo</button>
+            <button class="farm-tab" onclick="switchTab('market')">🛒 Mua heo</button>
+            <button class="farm-tab" onclick="switchTab('transfer')">💎 Chuyển KC</button>
+            <button class="farm-tab" onclick="switchTab('achievements')">🏆 Thành tích</button>
+        </div>
+
+        <!-- Panel: Pigpen -->
+        <div class="farm-panel active" id="panel-pigpen">
+            <!-- 2D Farm Scene -->
+            <div class="game-farm" id="gameFarm">
+                <div class="gf-sky">
+                    <div class="gf-sun">☀️</div>
+                    <div class="gf-cloud gf-c1"></div>
+                    <div class="gf-cloud gf-c2"></div>
+                    <div class="gf-cloud gf-c3"></div>
+                    <div class="gf-stars" id="gfStars"></div>
+                </div>
+                <div class="gf-bg">
+                    <div class="gf-mountain gf-m1"></div>
+                    <div class="gf-mountain gf-m2"></div>
+                    <div class="gf-barn">
+                        <div class="gf-barn-roof"></div>
+                        <div class="gf-barn-body">
+                            <div class="gf-barn-door"></div>
+                            <div class="gf-barn-window"></div>
+                            <div class="gf-barn-window gf-bw2"></div>
+                        </div>
+                        <div class="gf-barn-sign">🐷 Trại Heo</div>
+                    </div>
+                    <div class="gf-tree gf-t1"><div class="gf-tree-top"></div><div class="gf-tree-trunk"></div></div>
+                    <div class="gf-tree gf-t2"><div class="gf-tree-top"></div><div class="gf-tree-trunk"></div></div>
+                    <div class="gf-tree gf-t3"><div class="gf-tree-top gf-pine"></div><div class="gf-tree-trunk"></div></div>
+                    <div class="gf-fence"></div>
+                </div>
+                <div class="gf-ground">
+                    <div class="gf-grass"></div>
+                    <div class="gf-path"></div>
+                    <div class="gf-flowers">
+                        <span class="gf-flower gf-f1">🌻</span>
+                        <span class="gf-flower gf-f2">🌷</span>
+                        <span class="gf-flower gf-f3">🌸</span>
+                        <span class="gf-flower gf-f4">🌼</span>
+                        <span class="gf-flower gf-f5">🌺</span>
+                    </div>
+                    <div class="gf-trough">
+                        <div class="gf-trough-body"></div>
+                        <div class="gf-trough-food">🥕</div>
+                    </div>
+                    <div class="gf-water">
+                        <div class="gf-pond"></div>
+                        <span class="gf-ripple"></span>
+                    </div>
+                </div>
+                <div class="gf-pigs" id="gfPigs">
+                    <!-- Pigs rendered by JS -->
+                </div>
+                <div class="gf-info-bar">
+                    <span>📅 <strong id="todayDate"></strong></span>
+                    <div class="pigpen-filters">
+                        <button class="filter-btn active" onclick="filterPigs('all',this)">Tất cả</button>
+                        <button class="filter-btn" onclick="filterPigs('needs-care',this)">Cần chăm</button>
+                        <button class="filter-btn" onclick="filterPigs('matured',this)">Đáo hạn</button>
+                    </div>
+                </div>
+            </div>
+            <!-- Pig Cards Below -->
+            <div class="pigpen-grid" id="pigpenGrid"></div>
+        </div>
+
+        <!-- Panel: Market -->
+        <div class="farm-panel" id="panel-market">
+            <div class="market-balance">
+                <span>� Số dư: <strong id="marketBalance">0 KC</strong></span>
+                <button class="btn btn-sm btn-outline" onclick="openModal('topupModal')">+ Nạp thêm</button>
+            </div>
+            <div class="market-grid">
+                <div class="market-card">
+                    <div class="market-pig-wrap"><span class="market-pig">🐷</span></div>
+                    <h3>Heo con — 3 tháng</h3>
+                    <div class="market-meta">
+                        <span>💎 Giá: 100 KC</span>
+                        <span>💎 Bán: 101 KC</span>
+                        <span>📈 Lãi: +1 KC</span>
+                        <span>📅 90 ngày</span>
+                    </div>
+                    <div class="market-qty">
+                        <button onclick="changeQty('qty3',-1)">−</button>
+                        <input type="number" id="qty3" value="1" min="1" max="999">
+                        <button onclick="changeQty('qty3',1)">+</button>
+                    </div>
+                    <div class="market-total">Tổng: <strong id="total3">100 KC</strong></div>
+                    <button class="btn btn-primary btn-block" onclick="purchasePig(3)">Mua heo con 🐷</button>
+                </div>
+                <div class="market-card featured">
+                    <div class="market-badge">🔥 Phổ biến nhất</div>
+                    <div class="market-pig-wrap"><span class="market-pig">🐖</span></div>
+                    <h3>Heo lứa — 6 tháng</h3>
+                    <div class="market-meta">
+                        <span>� Giá: 100 KC</span>
+                        <span>💎 Bán: 103 KC</span>
+                        <span>📈 Lãi: +3 KC</span>
+                        <span>📅 180 ngày</span>
+                    </div>
+                    <div class="market-qty">
+                        <button onclick="changeQty('qty6',-1)">−</button>
+                        <input type="number" id="qty6" value="1" min="1" max="999">
+                        <button onclick="changeQty('qty6',1)">+</button>
+                    </div>
+                    <div class="market-total">Tổng: <strong id="total6">100 KC</strong></div>
+                    <button class="btn btn-gold btn-block" onclick="purchasePig(6)">Mua heo lứa 🐖</button>
+                </div>
+                <div class="market-card">
+                    <div class="market-pig-wrap"><span class="market-pig">🐗</span></div>
+                    <h3>Heo nái — 1 năm</h3>
+                    <div class="market-meta">
+                        <span>� Giá: 100 KC</span>
+                        <span>💎 Bán: 108 KC</span>
+                        <span>📈 Lãi: +8 KC</span>
+                        <span>📅 365 ngày</span>
+                    </div>
+                    <div class="market-qty">
+                        <button onclick="changeQty('qty12',-1)">−</button>
+                        <input type="number" id="qty12" value="1" min="1" max="999">
+                        <button onclick="changeQty('qty12',1)">+</button>
+                    </div>
+                    <div class="market-total">Tổng: <strong id="total12">100 KC</strong></div>
+                    <button class="btn btn-primary btn-block" onclick="purchasePig(12)">Mua heo nái 🐗</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Panel: Transfer -->
+        <div class="farm-panel" id="panel-transfer">
+            <div class="transfer-section">
+                <div class="transfer-balance">
+                    <span>💎 Kim cương của bạn: <strong id="transferBalance">0</strong> KC</span>
+                </div>
+                <form onsubmit="handleTransfer(event)" class="transfer-form">
+                    <div class="form-group">
+                        <label>📧 Email người nhận</label>
+                        <input type="email" id="transferEmail" placeholder="Nhập email người nhận..." required>
+                    </div>
+                    <div class="form-group">
+                        <label>💎 Số KC muốn chuyển</label>
+                        <input type="number" id="transferAmount" placeholder="Nhập số KC..." required min="1">
+                    </div>
+                    <div class="form-group">
+                        <label>📝 Lời nhắn (tùy chọn)</label>
+                        <input type="text" id="transferNote" placeholder="VD: Tặng bạn nè~" maxlength="100">
+                    </div>
+                    <button type="submit" class="btn btn-gold btn-block btn-lg">💎 Chuyển kim cương</button>
+                </form>
+                <div class="transfer-history">
+                    <h3>📋 Lịch sử chuyển KC</h3>
+                    <div id="transferHistoryList" class="transfer-history-list">
+                        <p class="transfer-empty">Chưa có giao dịch nào</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Panel: Achievements -->
+        <div class="farm-panel" id="panel-achievements">
+            <div class="achievements-grid" id="achievementsGrid"></div>
+        </div>
+    </div>
+</div>
+
+<!-- Topup Modal -->
+<div class="modal-overlay" id="topupModal">
+    <div class="modal modal-topup">
+        <button class="modal-close" onclick="closeModal('topupModal')">×</button>
+        <div class="modal-header">
+            <span class="modal-icon">💰</span>
+            <h2>Nạp tiền vào ví</h2>
+            <p>Chuyển khoản ngân hàng &amp; gửi yêu cầu xác nhận</p>
+        </div>
+
+        <!-- Step 1: Chọn số tiền -->
+        <div class="topup-step" id="topupStep1">
+            <div class="topup-step-header"><span class="topup-step-num">1</span> Chọn số tiền nạp</div>
+            <div class="form-group">
+                <input type="text" id="topupAmount" placeholder="Nhập số tiền VNĐ..." required oninput="formatAmount(this)">
+                <small>Tối thiểu: 100,000 VNĐ — Quy đổi: 1,000 VNĐ = 1 KC 💎</small>
+            </div>
+            <div class="topup-quick">
+                <button type="button" class="topup-btn" onclick="setTopup(100000)">100K → 100 KC</button>
+                <button type="button" class="topup-btn" onclick="setTopup(500000)">500K → 500 KC</button>
+                <button type="button" class="topup-btn" onclick="setTopup(1000000)">1M → 1,000 KC</button>
+                <button type="button" class="topup-btn" onclick="setTopup(5000000)">5M → 5,000 KC</button>
+                <button type="button" class="topup-btn" onclick="setTopup(10000000)">10M → 10,000 KC</button>
+            </div>
+            <button class="btn btn-gold btn-block" onclick="topupNext()">Tiếp tục →</button>
+        </div>
+
+        <!-- Step 2: QR & Chuyển khoản -->
+        <div class="topup-step" id="topupStep2" style="display:none">
+            <div class="topup-step-header"><span class="topup-step-num">2</span> Quét mã QR & Chuyển khoản</div>
+            <div class="topup-qr-box">
+                <img src="QRBank.jpg" alt="QR Ngân hàng" class="topup-qr-img">
+            </div>
+            <div class="topup-transfer-info">
+                <div class="topup-info-row">
+                    <span>💵 Số tiền cần chuyển:</span>
+                    <strong id="topupDisplayAmount">0 VNĐ</strong>
+                </div>
+                <div class="topup-info-row topup-note-row">
+                    <span>📝 Nội dung chuyển khoản:</span>
+                    <div class="topup-note-copy">
+                        <strong id="topupTransferNote">HD_...</strong>
+                        <button type="button" class="topup-copy-btn" onclick="copyTransferNote()" title="Sao chép">📋</button>
+                    </div>
+                </div>
+            </div>
+            <div class="topup-warning">
+                <span>⚠️</span>
+                <div>
+                    <strong>QUAN TRỌNG:</strong> Vui lòng chuyển <strong>đúng số tiền</strong> và ghi <strong>chính xác nội dung chuyển khoản</strong> ở trên. 
+                    Sai nội dung sẽ <strong>không thể xác nhận</strong> giao dịch!
+                </div>
+            </div>
+            <div class="topup-manual-notice">
+                <span>🕐</span>
+                <div>
+                    Do thanh toán được <strong>xác minh thủ công</strong>, thời gian xử lý từ <strong>15 - 30 phút</strong>. 
+                    Bạn sẽ nhận thông báo khi giao dịch được duyệt. Xin cảm ơn sự kiên nhẫn!
+                </div>
+            </div>
+            <button class="btn btn-gold btn-block" onclick="topupConfirm()">✅ Tôi đã chuyển khoản đúng thông tin</button>
+            <button class="btn btn-outline btn-block btn-sm" onclick="topupBack()" style="margin-top:8px">← Quay lại</button>
+        </div>
+
+        <!-- Step 3: Đã gửi yêu cầu -->
+        <div class="topup-step" id="topupStep3" style="display:none">
+            <div class="topup-result-icon">📨</div>
+            <h3 class="topup-result-title">Yêu cầu nạp tiền đã được gửi!</h3>
+            <p class="topup-result-desc">
+                Giao dịch của bạn đang được <strong>xác minh thủ công</strong>.<br>
+                Thời gian xử lý: <strong>15 - 30 phút</strong>.<br>
+                Tiền sẽ <strong>tự động cộng vào ví</strong> khi được admin duyệt.
+            </p>
+            <div class="topup-result-detail" id="topupResultDetail"></div>
+            <div class="topup-result-note">
+                💡 Nếu sau 30 phút chưa nhận được tiền, vui lòng liên hệ hỗ trợ qua Telegram.
+            </div>
+            <button class="btn btn-primary btn-block" onclick="closeModal('topupModal');topupReset()">Đóng</button>
+        </div>
+
+        <!-- Lịch sử nạp tiền -->
+        <div class="topup-history" id="topupHistory"></div>
+    </div>
+</div>
+
+<!-- Care Modal -->
+<div class="modal-overlay" id="careModal">
+    <div class="modal modal-care">
+        <button class="modal-close" onclick="closeModal('careModal')">×</button>
+        <div class="care-pig-display">
+            <span class="care-pig-emoji" id="carePigEmoji">🐷</span>
+            <div class="care-pig-mood" id="carePigMood"></div>
+        </div>
+        <h2 class="care-pig-name" id="carePigName">Heo #1</h2>
+        <p class="care-pig-type" id="carePigType">Heo con — 3 tháng</p>
+
+        <!-- Status bars -->
+        <div class="care-bars">
+            <div class="care-bar-item">
+                <span class="care-bar-label">❤️ Sức khỏe</span>
+                <div class="care-bar"><div class="care-bar-fill health" id="barHealth" style="width:100%"></div></div>
+                <span class="care-bar-value" id="valHealth">100%</span>
+            </div>
+            <div class="care-bar-item">
+                <span class="care-bar-label">😊 Vui vẻ</span>
+                <div class="care-bar"><div class="care-bar-fill happiness" id="barHappiness" style="width:100%"></div></div>
+                <span class="care-bar-value" id="valHappiness">100%</span>
+            </div>
+            <div class="care-bar-item">
+                <span class="care-bar-label">📈 Tiến trình</span>
+                <div class="care-bar"><div class="care-bar-fill progress" id="barProgress" style="width:0%"></div></div>
+                <span class="care-bar-value" id="valProgress">0%</span>
+            </div>
+        </div>
+
+        <!-- Info -->
+        <div class="care-info-grid" id="careInfoGrid"></div>
+
+        <!-- Actions -->
+        <div class="care-actions">
+            <button class="care-btn" id="btnFeed" onclick="feedPig()">
+                <span class="care-btn-icon">🍽️</span>
+                <span class="care-btn-text">Cho ăn</span>
+                <span class="care-btn-status" id="feedStatus">Chưa cho ăn</span>
+            </button>
+            <button class="care-btn" id="btnClean" onclick="cleanPig()">
+                <span class="care-btn-icon">🧹</span>
+                <span class="care-btn-text">Dọn chuồng</span>
+                <span class="care-btn-status" id="cleanStatus">Chưa dọn</span>
+            </button>
+        </div>
+
+        <!-- Sell button (for matured pigs) -->
+        <div id="careSellArea" style="display:none;">
+            <button class="btn btn-gold btn-block btn-lg" id="btnSell" onclick="sellCurrentPig()">
+                💎 Bán heo nhận kim cương
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- Toast -->
+<div class="toast-container" id="toastContainer"></div>
+
+<!-- Firebase SDK -->
+<script src="https://www.gstatic.com/firebasejs/12.12.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/12.12.0/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/12.12.0/firebase-firestore-compat.js"></script>
+<script>
+    const firebaseConfig = {
+        apiKey: "AIzaSyCuZ3xuwvzJYPXodVpPTmSxIKWKLRHM0m8",
+        authDomain: "heodat-1bbef.firebaseapp.com",
+        projectId: "heodat-1bbef",
+        storageBucket: "heodat-1bbef.firebasestorage.app",
+        messagingSenderId: "1073669660592",
+        appId: "1:1073669660592:web:1170f3bc80fe00ac2cc075",
+        measurementId: "G-YQDBDD3M8B"
+    };
+    firebase.initializeApp(firebaseConfig);
+</script>
+<script src="app.js"></script>
+</body>
+</html>

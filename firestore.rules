@@ -1,0 +1,33 @@
+rules_version = '2';
+
+// Heo Đất — Firestore Security Rules
+// Deploy: Firebase Console → Firestore → Rules → Paste & Publish
+// Hoặc: firebase deploy --only firestore:rules
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Users collection: mỗi user chỉ đọc/ghi document của mình
+    match /users/{userId} {
+
+      // Cho phép đọc document của chính mình
+      allow read: if request.auth != null && request.auth.uid == userId;
+
+      // Cho phép tạo document khi đăng ký (diamond phải = 0)
+      allow create: if request.auth != null && request.auth.uid == userId
+        && request.resource.data.diamond == 0;
+
+      // Cho phép update nhưng KHÔNG cho thay đổi diamond, pigs, loginStreak, topupHistory, transfers
+      // (Chỉ Admin SDK trên server mới được thay đổi các field này)
+      allow update: if request.auth != null && request.auth.uid == userId
+        && request.resource.data.diamond == resource.data.diamond
+        && request.resource.data.pigs == resource.data.pigs
+        && request.resource.data.loginStreak == resource.data.loginStreak;
+    }
+
+    // Chặn tất cả các collection khác
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

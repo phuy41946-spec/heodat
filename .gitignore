@@ -1,0 +1,6 @@
+node_modules/
+heodat-1bbef-firebase-adminsdk-*.json
+.env
+*.log
+.DS_Store
+Thumbs.db
