@@ -85,6 +85,35 @@ async function verifyAuth(req, res, next) {
 //  API ENDPOINTS
 // ═══════════════════════════════════════════
 
+// ── POST /api/register — Tạo profile sau khi signUp ──
+app.post('/api/register', verifyAuth, async (req, res) => {
+    try {
+        const uid = req.user.id;
+        const { name, phone } = req.body;
+        if (!name || !phone) return res.status(400).json({ error: 'Thiếu tên hoặc SĐT' });
+
+        // Check if profile already exists
+        const { data: existing } = await supabase.from('users').select('id').eq('id', uid).single();
+        if (existing) return res.json({ ok: true, message: 'Profile đã tồn tại' });
+
+        const { error } = await supabase.from('users').insert({
+            id: uid,
+            email: req.user.email,
+            name: name.trim(),
+            phone: phone.trim(),
+            diamond: 0,
+            total_kc_earned: 0,
+            total_cares: 0,
+            last_login: today(),
+            achievements: []
+        });
+        if (error) throw error;
+        res.json({ ok: true });
+    } catch (err) {
+        res.status(500).json({ error: err.message || 'Lỗi tạo profile' });
+    }
+});
+
 // ── POST /api/purchase — Mua heo ──
 app.post('/api/purchase', verifyAuth, async (req, res) => {
     let { term, qty } = req.body;

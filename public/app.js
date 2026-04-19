@@ -221,17 +221,8 @@ async function handleRegister(e) {
         const { data: authData, error: authErr } = await supabaseClient.auth.signUp({ email, password });
         if (authErr) throw authErr;
 
-        // Create user profile in public.users
-        const { error: profileErr } = await supabaseClient.from('users').insert({
-            id: authData.user.id,
-            name, email, phone,
-            diamond: 0,
-            total_kc_earned: 0,
-            total_cares: 0,
-            last_login: today(),
-            achievements: []
-        });
-        if (profileErr) throw profileErr;
+        // Create user profile via server API (bypasses RLS)
+        await callApi('/api/register', { name, phone });
 
         currentUser = {
             name, email, phone,
