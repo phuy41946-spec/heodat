@@ -1,5 +1,5 @@
-/* ==========================================
-   HEO ĐẤT — App.js Complete
+﻿/* ==========================================
+   HEO ĐẤT — App.js Complete (Supabase)
    Game nuôi heo, chăm sóc, bán nhận KC
    ========================================== */
 
@@ -44,23 +44,6 @@ function escapeHtml(str) {
     return div.innerHTML;
 }
 
-// ── Server API helper ──
-async function callApi(endpoint, body) {
-    const token = await auth.currentUser.getIdToken();
-    const res = await fetch(endpoint, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
-        body: JSON.stringify(body)
-    });
-    const text = await res.text();
-    let data;
-    try { data = JSON.parse(text); } catch (e) {
-        throw new Error('Server không phản hồi. Hãy mở web từ http://localhost:3000');
-    }
-    if (!res.ok) throw new Error(data.error || 'Lỗi server');
-    return data;
-}
-
 function getStage(progress) {
     if (progress >= 100) return { emoji: '💎', label: 'Xuất chuồng' };
     if (progress >= 67) return { emoji: '🐗', label: 'Adult' };
@@ -86,34 +69,109 @@ function today() {
     return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
 }
 
-// ── Firebase ──
-const auth = firebase.auth();
-const db = firebase.firestore();
+// ── Supabase (initialized in index.html as window.supabaseClient) ──
 
-// ── Storage (Firestore) ──
+// ── Storage (Supabase) ──
 function saveUser(data) {
     currentUser = data;
-    if (auth.currentUser) {
-        db.collection('users').doc(auth.currentUser.uid).update({
-            totalCares: data.totalCares || 0,
-            lastLogin: data.lastLogin,
-            achievements: data.achievements || []
-        }).catch(err => {
-            console.error('Lỗi lưu:', err);
-            showToast('⚠️', 'Không thể lưu dữ liệu. Kiểm tra kết nối mạng!');
-        });
-    }
+    supabaseClient.auth.getSession().then(({ data: { session } }) => {
+        if (session) {
+            supabaseClient.from('users').update({
+                total_cares: data.totalCares || 0,
+                last_login: data.lastLogin,
+                achievements: data.achievements || []
+            }).eq('id', session.user.id).then(({ error }) => {
+                if (error) {
+                    console.error('Lỗi lưu:', error);
+                    showToast('⚠️', 'Không thể lưu dữ liệu. Kiểm tra kết nối mạng!');
+                }
+            });
+        }
+    });
 }
 
 async function loadUserFromDb() {
-    if (!auth.currentUser) return null;
+    const { data: { session } } = await supabaseClient.auth.getSession();
+    if (!session) return null;
     try {
-        const doc = await db.collection('users').doc(auth.currentUser.uid).get();
-        return doc.exists ? doc.data() : null;
+        const { data: user, error } = await supabaseClient
+            .from('users').select('*').eq('id', session.user.id).single();
+        if (error || !user) return null;
+
+        const { data: pigs } = await supabaseClient
+            .from('pigs').select('*').eq('user_id', session.user.id);
+
+        const { data: transfers } = await supabaseClient
+            .from('transfers').select('*, sender:users!sender_id(name, email), recipient:users!recipient_id(name, email)')
+            .or(`sender_id.eq.${session.user.id},recipient_id.eq.${session.user.id}`)
+            .order('created_at', { ascending: false })
+            .limit(50);
+
+        const { data: topupHistory } = await supabaseClient
+            .from('topup_history').select('*').eq('user_id', session.user.id)
+            .order('created_at', { ascending: false });
+
+        return {
+            name: user.name,
+            email: user.email,
+            phone: user.phone || '',
+            diamond: user.diamond,
+            pigs: (pigs || []).map(mapPigFromDb),
+            totalKCEarned: user.total_kc_earned,
+            totalCares: user.total_cares,
+            lastLogin: user.last_login,
+            achievements: user.achievements || [],
+            createdAt: user.created_at,
+            transfers: (transfers || []).map(t => mapTransferFromDb(t, session.user.id)),
+            topupHistory: (topupHistory || []).map(mapTopupFromDb)
+        };
     } catch (err) {
         console.error('Lỗi tải:', err);
         return null;
     }
+}
+
+function mapPigFromDb(p) {
+    return {
+        id: p.id, name: p.name, term: p.term,
+        startDate: p.start_date, health: p.health, happiness: p.happiness,
+        lastFed: p.last_fed, lastCleaned: p.last_cleaned,
+        sold: p.sold, soldDate: p.sold_date, progress: 0
+    };
+}
+
+function mapTransferFromDb(t, myId) {
+    const isSent = t.sender_id === myId;
+    return {
+        id: t.id, type: isSent ? 'sent' : 'received',
+        to: isSent ? t.recipient?.email : undefined,
+        toName: isSent ? t.recipient?.name : undefined,
+        from: !isSent ? t.sender?.email : undefined,
+        fromName: !isSent ? t.sender?.name : undefined,
+        amount: t.amount, note: t.note, date: t.created_at
+    };
+}
+
+function mapTopupFromDb(h) {
+    return { id: h.id, amount: h.amount, note: h.note, status: h.status, date: h.created_at };
+}
+
+// ── Server API helper ──
+async function callApi(endpoint, body) {
+    const { data: { session } } = await supabaseClient.auth.getSession();
+    if (!session) throw new Error('Chưa đăng nhập');
+    const res = await fetch(endpoint, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + session.access_token },
+        body: JSON.stringify(body)
+    });
+    const text = await res.text();
+    let data;
+    try { data = JSON.parse(text); } catch (e) {
+        throw new Error('Server không phản hồi. Hãy mở web từ http://localhost:3000');
+    }
+    if (!res.ok) throw new Error(data.error || 'Lỗi server');
+    return data;
 }
 
 // ── Toast ──
@@ -160,30 +218,36 @@ async function handleRegister(e) {
     if (btn) { btn.disabled = true; btn.textContent = '⏳ Đang đăng ký...'; }
 
     try {
-        const cred = await auth.createUserWithEmailAndPassword(email, password);
-        cred.user.sendEmailVerification().catch(() => {});
-        const data = {
+        const { data: authData, error: authErr } = await supabaseClient.auth.signUp({ email, password });
+        if (authErr) throw authErr;
+
+        // Create user profile in public.users
+        const { error: profileErr } = await supabaseClient.from('users').insert({
+            id: authData.user.id,
             name, email, phone,
             diamond: 0,
-            pigs: [],
-            totalKCEarned: 0,
-            totalCares: 0,
-            lastLogin: today(),
-            achievements: [],
-            createdAt: new Date().toISOString()
+            total_kc_earned: 0,
+            total_cares: 0,
+            last_login: today(),
+            achievements: []
+        });
+        if (profileErr) throw profileErr;
+
+        currentUser = {
+            name, email, phone,
+            diamond: 0, pigs: [], totalKCEarned: 0, totalCares: 0,
+            lastLogin: today(), achievements: [], createdAt: new Date().toISOString(),
+            transfers: [], topupHistory: []
         };
-        await db.collection('users').doc(cred.user.uid).set(data);
-        currentUser = data;
         closeModal('registerModal');
         showToast('🎉', `Chào mừng ${name}! Trại heo đã sẵn sàng!`);
         updateUI();
         e.target.reset();
     } catch (err) {
-        const msg = {
-            'auth/email-already-in-use': 'Email đã được sử dụng',
-            'auth/weak-password': 'Mật khẩu quá yếu',
-            'auth/invalid-email': 'Email không hợp lệ'
-        }[err.code] || ('Lỗi: ' + err.message);
+        const msg = err.message?.includes('already registered') ? 'Email đã được sử dụng'
+            : err.message?.includes('weak') ? 'Mật khẩu quá yếu'
+            : err.message?.includes('invalid') ? 'Email không hợp lệ'
+            : ('Lỗi: ' + (err.message || err));
         showToast('⚠️', msg);
     } finally {
         if (btn) { btn.disabled = false; btn.textContent = 'Đăng ký 🐷'; }
@@ -199,7 +263,9 @@ async function handleLogin(e) {
     if (btn) { btn.disabled = true; btn.textContent = '⏳ Đang đăng nhập...'; }
 
     try {
-        await auth.signInWithEmailAndPassword(email, password);
+        const { error } = await supabaseClient.auth.signInWithPassword({ email, password });
+        if (error) throw error;
+
         const user = await loadUserFromDb();
         if (user) {
             user.lastLogin = today();
@@ -210,13 +276,10 @@ async function handleLogin(e) {
         updateUI();
         e.target.reset();
     } catch (err) {
-        const msg = {
-            'auth/wrong-password': 'Email hoặc mật khẩu không đúng',
-            'auth/user-not-found': 'Email hoặc mật khẩu không đúng',
-            'auth/invalid-credential': 'Email hoặc mật khẩu không đúng',
-            'auth/invalid-email': 'Email không hợp lệ',
-            'auth/too-many-requests': 'Quá nhiều lần thử, vui lòng đợi'
-        }[err.code] || ('Lỗi: ' + err.message);
+        const msg = err.message?.includes('Invalid login') ? 'Email hoặc mật khẩu không đúng'
+            : err.message?.includes('Email not confirmed') ? 'Vui lòng xác nhận email trước'
+            : err.message?.includes('too many') ? 'Quá nhiều lần thử, vui lòng đợi'
+            : ('Lỗi: ' + (err.message || err));
         showToast('❌', msg);
     } finally {
         if (btn) { btn.disabled = false; btn.textContent = 'Đăng nhập 🐷'; }
@@ -228,17 +291,17 @@ async function handleForgotPassword() {
     const email = $('loginEmail').value.trim().toLowerCase();
     if (!email) return showToast('⚠️', 'Vui lòng nhập email trước!');
     try {
-        await auth.sendPasswordResetEmail(email);
+        const { error } = await supabaseClient.auth.resetPasswordForEmail(email);
+        if (error) throw error;
         showToast('📧', 'Đã gửi email đặt lại mật khẩu! Kiểm tra hộp thư.');
     } catch (err) {
-        const msg = { 'auth/user-not-found': 'Email không tồn tại', 'auth/invalid-email': 'Email không hợp lệ' }[err.code] || 'Lỗi: ' + err.message;
-        showToast('❌', msg);
+        showToast('❌', 'Lỗi: ' + (err.message || err));
     }
 }
 
 async function handleLogout() {
     try {
-        await auth.signOut();
+        await supabaseClient.auth.signOut();
         currentUser = null;
         showToast('👋', 'Đã đăng xuất');
         closeModal('farmModal');
@@ -550,7 +613,7 @@ function renderTransferPanel() {
 
 async function handleTransfer(e) {
     e.preventDefault();
-    if (!currentUser || !auth.currentUser) return;
+    if (!currentUser) return;
 
     const recipientEmail = $('transferEmail').value.trim().toLowerCase();
     const amount = parseInt($('transferAmount').value);
@@ -638,7 +701,7 @@ document.addEventListener('input', e => {
 });
 
 async function purchasePig(term) {
-    if (!currentUser || !auth.currentUser) return openModal('loginModal');
+    if (!currentUser) return openModal('loginModal');
     const qty = parseInt($('qty' + term).value) || 1;
     if (qty < 1) return showToast('⚠️', 'Số lượng phải ít nhất 1');
 
@@ -654,7 +717,7 @@ async function purchasePig(term) {
         const result = await callApi('/api/purchase', { term, qty });
         // Update local state from server
         currentUser.diamond = result.diamond;
-        currentUser.pigs.push(...result.pigs);
+        currentUser.pigs.push(...result.pigs.map(mapPigFromDb));
         const pigInfo = CONFIG.PIGS[term];
         showToast('🐷', `Mua thành công ${qty} ${pigInfo.label}!`);
         renderFarm();
@@ -732,14 +795,14 @@ function openCare(pigId) {
 }
 
 async function feedPig() {
-    if (!currentUser || !currentPigId || !auth.currentUser) return;
+    if (!currentUser || !currentPigId) return;
     const pig = currentUser.pigs.find(p => p.id === currentPigId);
     if (!pig || pig.lastFed === today()) return;
 
     try {
         const result = await callApi('/api/care', { pigId: currentPigId, action: 'feed' });
         const idx = currentUser.pigs.findIndex(p => p.id === currentPigId);
-        if (idx >= 0) currentUser.pigs[idx] = result.pig;
+        if (idx >= 0) currentUser.pigs[idx] = mapPigFromDb(result.pig);
         currentUser.totalCares = result.totalCares;
         showToast('🍽️', `Đã cho ${pig.name} ăn!`);
         openCare(currentPigId);
@@ -750,14 +813,14 @@ async function feedPig() {
 }
 
 async function cleanPig() {
-    if (!currentUser || !currentPigId || !auth.currentUser) return;
+    if (!currentUser || !currentPigId) return;
     const pig = currentUser.pigs.find(p => p.id === currentPigId);
     if (!pig || pig.lastCleaned === today()) return;
 
     try {
         const result = await callApi('/api/care', { pigId: currentPigId, action: 'clean' });
         const idx = currentUser.pigs.findIndex(p => p.id === currentPigId);
-        if (idx >= 0) currentUser.pigs[idx] = result.pig;
+        if (idx >= 0) currentUser.pigs[idx] = mapPigFromDb(result.pig);
         currentUser.totalCares = result.totalCares;
         showToast('🧹', `Đã dọn chuồng cho ${pig.name}!`);
         openCare(currentPigId);
@@ -768,7 +831,7 @@ async function cleanPig() {
 }
 
 async function sellCurrentPig() {
-    if (!currentUser || !currentPigId || !auth.currentUser) return;
+    if (!currentUser || !currentPigId) return;
     const pig = currentUser.pigs.find(p => p.id === currentPigId);
     if (!pig || pig.progress < 100 || pig.sold) return;
 
@@ -845,7 +908,7 @@ function topupReset() {
 }
 
 async function topupConfirm() {
-    if (!currentUser || !auth.currentUser || !topupAmountValue) return;
+    if (!currentUser || !topupAmountValue) return;
 
     const btn = document.querySelector('#topupStep2 .btn-gold');
     if (btn) { btn.disabled = true; btn.textContent = '⏳ Đang gửi yêu cầu...'; }
@@ -1020,30 +1083,52 @@ function createParticles() {
 }
 
 // ── Auth State Listener + Real-time Sync ──
-let _userUnsubscribe = null;
+let _realtimeChannel = null;
 
-auth.onAuthStateChanged(async (user) => {
-    // Clean up previous listener
-    if (_userUnsubscribe) { _userUnsubscribe(); _userUnsubscribe = null; }
+supabaseClient.auth.onAuthStateChange(async (event, session) => {
+    // Clean up previous realtime subscription
+    if (_realtimeChannel) {
+        supabaseClient.removeChannel(_realtimeChannel);
+        _realtimeChannel = null;
+    }
 
-    if (user) {
+    if (session?.user) {
         if (!currentUser) {
             const data = await loadUserFromDb();
             if (data) currentUser = data;
         }
 
-        // Real-time listener: auto-sync financial fields (diamond, topup status)
-        _userUnsubscribe = db.collection('users').doc(user.uid).onSnapshot((doc) => {
-            if (doc.exists && currentUser) {
-                const serverData = doc.data();
-                currentUser.diamond = serverData.diamond;
-                currentUser.topupHistory = serverData.topupHistory;
-                currentUser.transfers = serverData.transfers;
-                currentUser.totalKCEarned = serverData.totalKCEarned;
-                // Re-render if farm modal is open
-                if ($('farmModal') && $('farmModal').classList.contains('active')) renderFarm();
-            }
-        }, err => console.error('Sync error:', err));
+        // Real-time listener: auto-sync financial fields
+        _realtimeChannel = supabaseClient
+            .channel('user-sync')
+            .on('postgres_changes', {
+                event: 'UPDATE',
+                schema: 'public',
+                table: 'users',
+                filter: `id=eq.${session.user.id}`
+            }, (payload) => {
+                if (currentUser && payload.new) {
+                    currentUser.diamond = payload.new.diamond;
+                    currentUser.totalKCEarned = payload.new.total_kc_earned;
+                    if ($('farmModal') && $('farmModal').classList.contains('active')) renderFarm();
+                }
+            })
+            .on('postgres_changes', {
+                event: '*',
+                schema: 'public',
+                table: 'topup_history',
+                filter: `user_id=eq.${session.user.id}`
+            }, async () => {
+                // Reload topup history on any change
+                if (currentUser) {
+                    const { data: topups } = await supabaseClient
+                        .from('topup_history').select('*').eq('user_id', session.user.id)
+                        .order('created_at', { ascending: false });
+                    if (topups) currentUser.topupHistory = topups.map(mapTopupFromDb);
+                    if ($('farmModal') && $('farmModal').classList.contains('active')) renderFarm();
+                }
+            })
+            .subscribe();
     } else {
         currentUser = null;
     }

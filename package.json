@@ -1,14 +1,15 @@
 {
   "name": "heo-dat",
-  "version": "2.0.0",
+  "version": "3.0.0",
   "description": "Heo Đất - Trại Heo Vui Vẻ",
   "scripts": {
     "start": "node server.js",
     "dev": "node server.js"
   },
   "dependencies": {
+    "@supabase/supabase-js": "^2.103.3",
     "dotenv": "^17.4.2",
     "express": "^4.22.1",
-    "firebase-admin": "^13.8.0"
+    "pg": "^8.20.0"
   }
 }

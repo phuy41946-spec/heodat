@@ -1,12 +1,12 @@
 /* ==========================================
-   HEO ĐẤT — Server (Express + Telegram Bot)
+   HEO ĐẤT — Server (Express + Supabase + Telegram Bot)
    Chạy: node server.js
    Tất cả thao tác tài chính đi qua đây
    ========================================== */
 
 require('dotenv').config();
 const express = require('express');
-const admin = require('firebase-admin');
+const { createClient } = require('@supabase/supabase-js');
 const https = require('https');
 const path = require('path');
 
@@ -14,20 +14,30 @@ const path = require('path');
 const PORT = process.env.PORT || 3000;
 const BOT_TOKEN = process.env.BOT_TOKEN;
 const ADMIN_CHAT_ID = process.env.ADMIN_CHAT_ID;
+const SUPABASE_URL = process.env.SUPABASE_URL;
+const SUPABASE_SECRET_KEY = process.env.SUPABASE_SECRET_KEY;
 
 if (!BOT_TOKEN || !ADMIN_CHAT_ID) {
     console.error('❌ Thiếu biến môi trường BOT_TOKEN hoặc ADMIN_CHAT_ID');
-    console.error('   Tạo file .env hoặc set biến môi trường trước khi chạy');
     process.exit(1);
 }
+if (!SUPABASE_URL || !SUPABASE_SECRET_KEY) {
+    console.error('❌ Thiếu biến môi trường SUPABASE_URL hoặc SUPABASE_SECRET_KEY');
+    process.exit(1);
+}
+
+// Supabase admin client (bypasses RLS)
+const supabase = createClient(SUPABASE_URL, SUPABASE_SECRET_KEY, {
+    auth: { autoRefreshToken: false, persistSession: false }
+});
 
 const PIGS = {
     3:  { label: 'Heo con', days: 90,  reward: 103 },
     6:  { label: 'Heo lứa', days: 180, reward: 107 },
     12: { label: 'Heo nái', days: 365, reward: 118 }
 };
-const PIG_PRICE_KC = 100; // 100 KC / con heo
-const KC_RATE = 1000;     // 1 KC = 1,000 VNĐ
+const PIG_PRICE_KC = 100;
+const KC_RATE = 1000;
 const PIG_NAMES = [
     'Heo Bông','Heo Mập','Heo Xinh','Heo Cute','Heo Hồng','Heo Vui','Heo Yêu',
     'Heo Béo','Heo Phúc','Heo Lộc','Heo Tài','Heo Đẹp','Heo Mochi','Heo Bánh',
@@ -36,10 +46,6 @@ const PIG_NAMES = [
 ];
 
 // ── Helpers ──
-function genId() {
-    return Date.now().toString(36) + Math.random().toString(36).substring(2, 9);
-}
-
 function today() {
     const d = new Date();
     return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
@@ -53,37 +59,22 @@ function formatMoney(n) {
     return new Intl.NumberFormat('vi-VN').format(n) + ' VNĐ';
 }
 
-// ── Firebase Admin ──
-let serviceAccount;
-if (process.env.FIREBASE_SERVICE_ACCOUNT) {
-    // Render / production: đọc từ env var (JSON string)
-    serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT);
-} else {
-    // Local: đọc từ file
-    try {
-        serviceAccount = require('./heodat-1bbef-firebase-adminsdk-fbsvc-2fc8133bea.json');
-    } catch (e) {
-        console.error('❌ Thiếu FIREBASE_SERVICE_ACCOUNT env hoặc file service account key!');
-        process.exit(1);
-    }
-}
-
-admin.initializeApp({ credential: admin.credential.cert(serviceAccount) });
-const db = admin.firestore();
-
 // ── Express ──
 const app = express();
 app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
 
-// ── Auth Middleware ──
+// ── Auth Middleware (Supabase JWT) ──
 async function verifyAuth(req, res, next) {
     const authHeader = req.headers.authorization;
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
         return res.status(401).json({ error: 'Chưa đăng nhập' });
     }
     try {
-        req.user = await admin.auth().verifyIdToken(authHeader.split('Bearer ')[1]);
+        const token = authHeader.split('Bearer ')[1];
+        const { data: { user }, error } = await supabase.auth.getUser(token);
+        if (error || !user) throw new Error('Token không hợp lệ');
+        req.user = user;
         next();
     } catch (err) {
         res.status(401).json({ error: 'Token không hợp lệ' });
@@ -91,7 +82,7 @@ async function verifyAuth(req, res, next) {
 }
 
 // ═══════════════════════════════════════════
-//  API ENDPOINTS (Financial operations)
+//  API ENDPOINTS
 // ═══════════════════════════════════════════
 
 // ── POST /api/purchase — Mua heo ──
@@ -104,47 +95,42 @@ app.post('/api/purchase', verifyAuth, async (req, res) => {
     if (!qty || qty < 1 || qty > 100) return res.status(400).json({ error: 'Số lượng phải từ 1-100' });
 
     const totalCost = qty * PIG_PRICE_KC;
-    const uid = req.user.uid;
+    const uid = req.user.id;
 
     try {
-        const result = await db.runTransaction(async (t) => {
-            const userRef = db.collection('users').doc(uid);
-            const doc = await t.get(userRef);
-            if (!doc.exists) throw new Error('Tài khoản không tồn tại');
+        // Get user
+        const { data: user, error: userErr } = await supabase
+            .from('users').select('diamond').eq('id', uid).single();
+        if (userErr || !user) throw new Error('Tài khoản không tồn tại');
+        if (user.diamond < totalCost) throw new Error(`Không đủ KC! Cần ${totalCost} KC, bạn có ${user.diamond} KC`);
 
-            const data = doc.data();
-            if ((data.diamond || 0) < totalCost) {
-                throw new Error(`Không đủ KC! Cần ${totalCost} KC, bạn có ${data.diamond || 0} KC`);
-            }
+        // Deduct diamond
+        const { error: updateErr } = await supabase
+            .from('users').update({ diamond: user.diamond - totalCost }).eq('id', uid);
+        if (updateErr) throw new Error('Lỗi cập nhật số dư');
 
-            const newPigs = [];
-            const todayStr = today();
-            for (let i = 0; i < qty; i++) {
-                newPigs.push({
-                    id: genId(),
-                    name: randomName(),
-                    term,
-                    startDate: new Date().toISOString(),
-                    health: 100,
-                    happiness: 100,
-                    progress: 0,
-                    lastFed: todayStr,
-                    lastCleaned: todayStr,
-                    sold: false,
-                    soldDate: null
-                });
-            }
-
-            const updatedPigs = [...(data.pigs || []), ...newPigs];
-            t.update(userRef, {
-                diamond: admin.firestore.FieldValue.increment(-totalCost),
-                pigs: updatedPigs
+        // Create pigs
+        const todayStr = today();
+        const newPigs = [];
+        for (let i = 0; i < qty; i++) {
+            newPigs.push({
+                user_id: uid,
+                name: randomName(),
+                term,
+                start_date: new Date().toISOString(),
+                health: 100,
+                happiness: 100,
+                last_fed: todayStr,
+                last_cleaned: todayStr,
+                sold: false
             });
+        }
 
-            return { pigs: newPigs, diamond: (data.diamond || 0) - totalCost };
-        });
+        const { data: insertedPigs, error: pigErr } = await supabase
+            .from('pigs').insert(newPigs).select();
+        if (pigErr) throw new Error('Lỗi tạo heo');
 
-        res.json({ success: true, pigs: result.pigs, diamond: result.diamond });
+        res.json({ success: true, pigs: insertedPigs, diamond: user.diamond - totalCost });
     } catch (err) {
         res.status(400).json({ error: err.message });
     }
@@ -154,52 +140,37 @@ app.post('/api/purchase', verifyAuth, async (req, res) => {
 app.post('/api/sell', verifyAuth, async (req, res) => {
     const { pigId } = req.body;
     if (!pigId) return res.status(400).json({ error: 'Thiếu mã heo' });
-
-    const uid = req.user.uid;
+    const uid = req.user.id;
 
     try {
-        const result = await db.runTransaction(async (t) => {
-            const userRef = db.collection('users').doc(uid);
-            const doc = await t.get(userRef);
-            if (!doc.exists) throw new Error('Tài khoản không tồn tại');
+        // Get pig
+        const { data: pig, error: pigErr } = await supabase
+            .from('pigs').select('*').eq('id', pigId).eq('user_id', uid).single();
+        if (pigErr || !pig) throw new Error('Không tìm thấy heo');
+        if (pig.sold) throw new Error('Heo đã được bán rồi');
 
-            const data = doc.data();
-            const pigs = [...(data.pigs || [])];
-            const idx = pigs.findIndex(p => p.id === pigId);
+        const pigInfo = PIGS[pig.term];
+        if (!pigInfo) throw new Error('Loại heo không hợp lệ');
 
-            if (idx < 0) throw new Error('Không tìm thấy heo');
-            if (pigs[idx].sold) throw new Error('Heo đã được bán rồi');
+        // Maturity check
+        const start = new Date(pig.start_date);
+        const now = new Date();
+        const elapsed = Math.floor((now - start) / 86400000);
+        const progress = Math.min(100, Math.round((elapsed / pigInfo.days) * 100));
+        if (progress < 100) throw new Error(`Heo chưa đáo hạn! (${progress}%)`);
 
-            const pig = pigs[idx];
-            const pigInfo = PIGS[pig.term];
-            if (!pigInfo) throw new Error('Loại heo không hợp lệ');
+        const reward = pigInfo.reward;
 
-            // Server-side maturity check from original startDate
-            const start = new Date(pig.startDate);
-            const now = new Date();
-            const elapsed = Math.floor((now - start) / 86400000);
-            const progress = Math.min(100, Math.round((elapsed / pigInfo.days) * 100));
+        // Mark pig as sold
+        await supabase.from('pigs').update({ sold: true, sold_date: new Date().toISOString() }).eq('id', pigId);
 
-            if (progress < 100) throw new Error(`Heo chưa đáo hạn! (${progress}%)`);
+        // Update user diamond
+        const { data: user } = await supabase.from('users').select('diamond, total_kc_earned').eq('id', uid).single();
+        const newDiamond = (user.diamond || 0) + reward;
+        const newTotalKC = (user.total_kc_earned || 0) + reward;
+        await supabase.from('users').update({ diamond: newDiamond, total_kc_earned: newTotalKC }).eq('id', uid);
 
-            const reward = pigInfo.reward;
-            pigs[idx] = { ...pig, sold: true, soldDate: new Date().toISOString(), progress: 100 };
-
-            t.update(userRef, {
-                pigs,
-                diamond: admin.firestore.FieldValue.increment(reward),
-                totalKCEarned: admin.firestore.FieldValue.increment(reward)
-            });
-
-            return {
-                reward,
-                pigName: pig.name,
-                diamond: (data.diamond || 0) + reward,
-                totalKCEarned: (data.totalKCEarned || 0) + reward
-            };
-        });
-
-        res.json({ success: true, ...result });
+        res.json({ success: true, reward, pigName: pig.name, diamond: newDiamond, totalKCEarned: newTotalKC });
     } catch (err) {
         res.status(400).json({ error: err.message });
     }
@@ -207,7 +178,7 @@ app.post('/api/sell', verifyAuth, async (req, res) => {
 
 // ── POST /api/care — Cho ăn / Tắm heo ──
 app.post('/api/care', verifyAuth, async (req, res) => {
-    const uid = req.user.uid;
+    const uid = req.user.id;
     const { pigId, action } = req.body;
 
     if (!pigId || !['feed', 'clean'].includes(action)) {
@@ -215,38 +186,30 @@ app.post('/api/care', verifyAuth, async (req, res) => {
     }
 
     try {
-        const result = await db.runTransaction(async (t) => {
-            const userRef = db.collection('users').doc(uid);
-            const doc = await t.get(userRef);
-            if (!doc.exists) throw new Error('Tài khoản không tồn tại');
+        const { data: pig, error: pigErr } = await supabase
+            .from('pigs').select('*').eq('id', pigId).eq('user_id', uid).single();
+        if (pigErr || !pig) throw new Error('Không tìm thấy heo');
+        if (pig.sold) throw new Error('Heo đã được bán rồi');
 
-            const data = doc.data();
-            const pigs = [...(data.pigs || [])];
-            const idx = pigs.findIndex(p => p.id === pigId);
+        const updates = {};
+        if (action === 'feed') {
+            updates.last_fed = today();
+            updates.health = Math.min(100, (pig.health || 50) + 20);
+        } else {
+            updates.last_cleaned = today();
+            updates.happiness = Math.min(100, (pig.happiness || 50) + 20);
+        }
 
-            if (idx < 0) throw new Error('Không tìm thấy heo');
-            if (pigs[idx].sold) throw new Error('Heo đã được bán rồi');
+        const { data: updatedPig, error: updateErr } = await supabase
+            .from('pigs').update(updates).eq('id', pigId).select().single();
+        if (updateErr) throw new Error('Lỗi cập nhật heo');
 
-            const pig = { ...pigs[idx] };
-            const nowStr = new Date().toISOString();
+        // Update total cares
+        const { data: user } = await supabase.from('users').select('total_cares').eq('id', uid).single();
+        const totalCares = (user.total_cares || 0) + 1;
+        await supabase.from('users').update({ total_cares: totalCares }).eq('id', uid);
 
-            if (action === 'feed') {
-                pig.lastFed = nowStr;
-                pig.health = Math.min(100, (pig.health || 50) + 20);
-            } else {
-                pig.lastCleaned = nowStr;
-                pig.happiness = Math.min(100, (pig.happiness || 50) + 20);
-            }
-
-            pigs[idx] = pig;
-            const totalCares = (data.totalCares || 0) + 1;
-
-            t.update(userRef, { pigs, totalCares });
-
-            return { pig, totalCares };
-        });
-
-        res.json({ success: true, ...result });
+        res.json({ success: true, pig: updatedPig, totalCares });
     } catch (err) {
         res.status(400).json({ error: err.message });
     }
@@ -254,7 +217,7 @@ app.post('/api/care', verifyAuth, async (req, res) => {
 
 // ── POST /api/transfer — Chuyển KC ──
 app.post('/api/transfer', verifyAuth, async (req, res) => {
-    const uid = req.user.uid;
+    const uid = req.user.id;
     let { recipientEmail, amount, note } = req.body;
 
     amount = parseInt(amount);
@@ -266,64 +229,57 @@ app.post('/api/transfer', verifyAuth, async (req, res) => {
     if (amount > 10000) return res.status(400).json({ error: 'Tối đa chuyển 10,000 KC mỗi lần' });
 
     try {
-        // Rate limit: check recent transfers (max 5 per hour)
-        const senderDoc = await db.collection('users').doc(uid).get();
-        if (senderDoc.exists) {
-            const transfers = senderDoc.data().transfers || [];
-            const oneHourAgo = Date.now() - 60 * 60 * 1000;
-            const recentSent = transfers.filter(t => t.type === 'sent' && new Date(t.date).getTime() > oneHourAgo);
-            if (recentSent.length >= 5) {
-                return res.status(429).json({ error: 'Chỉ được chuyển tối đa 5 lần/giờ. Vui lòng đợi.' });
-            }
+        // Rate limit: max 5 per hour
+        const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000).toISOString();
+        const { count } = await supabase
+            .from('transfers').select('*', { count: 'exact', head: true })
+            .eq('sender_id', uid).gte('created_at', oneHourAgo);
+        if (count >= 5) {
+            return res.status(429).json({ error: 'Chỉ được chuyển tối đa 5 lần/giờ. Vui lòng đợi.' });
         }
 
         // Find recipient
-        const snap = await db.collection('users').where('email', '==', recipientEmail).get();
-        if (snap.empty) return res.status(404).json({ error: 'Không tìm thấy tài khoản với email này' });
+        const { data: recipients } = await supabase
+            .from('users').select('id, name, email').eq('email', recipientEmail);
+        if (!recipients || recipients.length === 0) {
+            return res.status(404).json({ error: 'Không tìm thấy tài khoản với email này' });
+        }
+        const recipient = recipients[0];
+        if (recipient.id === uid) return res.status(400).json({ error: 'Không thể chuyển cho chính mình' });
 
-        const recipDoc = snap.docs[0];
-        if (recipDoc.id === uid) return res.status(400).json({ error: 'Không thể chuyển cho chính mình' });
+        // Get sender
+        const { data: sender } = await supabase
+            .from('users').select('diamond, email, name').eq('id', uid).single();
+        if (sender.diamond < amount) throw new Error(`Không đủ KC! Bạn có ${sender.diamond} KC`);
 
-        const result = await db.runTransaction(async (t) => {
-            const senderRef = db.collection('users').doc(uid);
-            const recipRef = db.collection('users').doc(recipDoc.id);
+        // Execute transfer
+        await supabase.from('users').update({ diamond: sender.diamond - amount }).eq('id', uid);
 
-            const senderSnap = await t.get(senderRef);
-            const recipSnap = await t.get(recipRef);
+        const { data: recipFull } = await supabase.from('users').select('diamond').eq('id', recipient.id).single();
+        await supabase.from('users').update({ diamond: (recipFull.diamond || 0) + amount }).eq('id', recipient.id);
 
-            if (!senderSnap.exists) throw new Error('Tài khoản gửi không tồn tại');
-            if (!recipSnap.exists) throw new Error('Tài khoản nhận không tồn tại');
+        // Record transfer
+        const { data: transfer } = await supabase.from('transfers').insert({
+            sender_id: uid,
+            recipient_id: recipient.id,
+            amount,
+            note
+        }).select().single();
 
-            const senderData = senderSnap.data();
-            const recipData = recipSnap.data();
-
-            if (senderData.diamond < amount) {
-                throw new Error(`Không đủ KC! Bạn có ${senderData.diamond} KC`);
-            }
-
-            const transferId = genId();
-            const now = new Date().toISOString();
-
-            const senderTransfer = { id: transferId, type: 'sent', to: recipientEmail, toName: recipData.name, amount, note, date: now };
-            const recipTransfer = { id: transferId, type: 'received', from: senderData.email, fromName: senderData.name, amount, note, date: now };
-
-            t.update(senderRef, {
-                diamond: admin.firestore.FieldValue.increment(-amount),
-                transfers: admin.firestore.FieldValue.arrayUnion(senderTransfer)
-            });
-            t.update(recipRef, {
-                diamond: admin.firestore.FieldValue.increment(amount),
-                transfers: admin.firestore.FieldValue.arrayUnion(recipTransfer)
-            });
-
-            return {
-                recipientName: recipData.name,
-                transfer: senderTransfer,
-                diamond: senderData.diamond - amount
-            };
+        res.json({
+            success: true,
+            recipientName: recipient.name,
+            transfer: {
+                id: transfer.id,
+                type: 'sent',
+                to: recipientEmail,
+                toName: recipient.name,
+                amount,
+                note,
+                date: transfer.created_at
+            },
+            diamond: sender.diamond - amount
         });
-
-        res.json({ success: true, ...result });
     } catch (err) {
         res.status(400).json({ error: err.message });
     }
@@ -331,55 +287,56 @@ app.post('/api/transfer', verifyAuth, async (req, res) => {
 
 // ── POST /api/topup — Yêu cầu nạp tiền ──
 app.post('/api/topup', verifyAuth, async (req, res) => {
-    const uid = req.user.uid;
+    const uid = req.user.id;
     let { amount, note } = req.body;
     amount = parseInt(amount);
 
     if (!amount || amount < 100000) return res.status(400).json({ error: 'Tối thiểu 100,000 VNĐ' });
     if (amount > 100000000) return res.status(400).json({ error: 'Tối đa 100,000,000 VNĐ' });
 
-    // Validate note format
     if (!note || !/^HD\d{6}$/.test(note)) {
         note = 'HD' + Math.floor(100000 + Math.random() * 900000);
     }
 
     try {
-        const userRef = db.collection('users').doc(uid);
-        const userDoc = await userRef.get();
-        if (!userDoc.exists) return res.status(404).json({ error: 'Tài khoản không tồn tại' });
+        const { data: user } = await supabase.from('users').select('name, email').eq('id', uid).single();
+        if (!user) return res.status(404).json({ error: 'Tài khoản không tồn tại' });
 
-        const userData = userDoc.data();
-        const history = userData.topupHistory || [];
-
-        // Rate limit: max 3 pending requests
-        const pendingCount = history.filter(h => h.status === 'pending').length;
+        // Rate limit: max 3 pending
+        const { count: pendingCount } = await supabase
+            .from('topup_history').select('*', { count: 'exact', head: true })
+            .eq('user_id', uid).eq('status', 'pending');
         if (pendingCount >= 3) {
             return res.status(429).json({ error: 'Đã có 3 yêu cầu đang chờ. Vui lòng đợi duyệt.' });
         }
 
         // Rate limit: 5 min cooldown
-        const fiveMinAgo = Date.now() - 5 * 60 * 1000;
-        const recent = history.filter(h => new Date(h.date).getTime() > fiveMinAgo);
-        if (recent.length > 0) {
+        const fiveMinAgo = new Date(Date.now() - 5 * 60 * 1000).toISOString();
+        const { count: recentCount } = await supabase
+            .from('topup_history').select('*', { count: 'exact', head: true })
+            .eq('user_id', uid).gte('created_at', fiveMinAgo);
+        if (recentCount > 0) {
             return res.status(429).json({ error: 'Vui lòng đợi 5 phút giữa mỗi lần nạp.' });
         }
 
-        const requestId = genId();
-        const now = new Date().toISOString();
-        const entry = { id: requestId, amount, note, status: 'pending', date: now };
-
-        await userRef.update({
-            topupHistory: admin.firestore.FieldValue.arrayUnion(entry)
-        });
-
-        // Send Telegram with inline keyboard
         const kcAmount = Math.floor(amount / KC_RATE);
+
+        const { data: topup, error: insertErr } = await supabase.from('topup_history').insert({
+            user_id: uid,
+            amount,
+            kc_amount: kcAmount,
+            note,
+            status: 'pending'
+        }).select().single();
+        if (insertErr) throw new Error('Lỗi tạo yêu cầu');
+
+        // Send Telegram
         const text = `💰 *YÊU CẦU NẠP TIỀN*\n\n` +
-            `👤 Tên: ${userData.name}\n` +
-            `📧 Email: ${userData.email}\n` +
+            `👤 Tên: ${user.name}\n` +
+            `📧 Email: ${user.email}\n` +
             `💵 Số tiền: ${formatMoney(amount)} → 💎 ${kcAmount} KC\n` +
             `📝 Nội dung CK: \`${note}\`\n` +
-            `🆔 Mã: \`${requestId}\`\n` +
+            `🆔 Mã: \`${topup.id}\`\n` +
             `⏰ ${new Date().toLocaleString('vi-VN')}`;
 
         await callTelegram('sendMessage', {
@@ -388,13 +345,13 @@ app.post('/api/topup', verifyAuth, async (req, res) => {
             parse_mode: 'Markdown',
             reply_markup: {
                 inline_keyboard: [[
-                    { text: '✅ Duyệt nạp tiền', callback_data: `approve:${uid}:${requestId}:${amount}` },
-                    { text: '❌ Từ chối', callback_data: `reject:${uid}:${requestId}:${amount}` }
+                    { text: '✅ Duyệt nạp tiền', callback_data: `approve:${uid}:${topup.id}:${amount}` },
+                    { text: '❌ Từ chối', callback_data: `reject:${uid}:${topup.id}:${amount}` }
                 ]]
             }
         });
 
-        res.json({ success: true, requestId, note, amount });
+        res.json({ success: true, requestId: topup.id, note, amount });
     } catch (err) {
         console.error('Topup error:', err);
         res.status(500).json({ error: 'Lỗi server, vui lòng thử lại' });
@@ -454,36 +411,36 @@ async function handleTgMessage(msg) {
     }
 
     if (text === '/pending') {
-        const snap = await db.collection('users').get();
-        let count = 0;
-        for (const doc of snap.docs) {
-            const u = doc.data();
-            if (u.topupHistory) {
-                for (const h of u.topupHistory.filter(h => h.status === 'pending')) {
-                    const date = new Date(h.date).toLocaleString('vi-VN');
-                    await callTelegram('sendMessage', {
-                        chat_id: chatId,
-                        text: `💰 *YÊU CẦU CHỜ DUYỆT*\n\n👤 ${u.name} (${u.email})\n💵 ${formatMoney(h.amount)}\n📝 ${h.note}\n⏰ ${date}`,
-                        parse_mode: 'Markdown',
-                        reply_markup: {
-                            inline_keyboard: [[
-                                { text: '✅ Duyệt', callback_data: `approve:${doc.id}:${h.id}:${h.amount}` },
-                                { text: '❌ Từ chối', callback_data: `reject:${doc.id}:${h.id}:${h.amount}` }
-                            ]]
-                        }
-                    });
-                    count++;
-                }
-            }
+        const { data: pending } = await supabase
+            .from('topup_history')
+            .select('*, users!inner(name, email)')
+            .eq('status', 'pending');
+
+        if (!pending || pending.length === 0) {
+            return sendTgMessage(chatId, '✅ Không có yêu cầu nào đang chờ.');
         }
-        if (count === 0) return sendTgMessage(chatId, '✅ Không có yêu cầu nào đang chờ.');
+
+        for (const h of pending) {
+            const date = new Date(h.created_at).toLocaleString('vi-VN');
+            await callTelegram('sendMessage', {
+                chat_id: chatId,
+                text: `💰 *YÊU CẦU CHỜ DUYỆT*\n\n👤 ${h.users.name} (${h.users.email})\n💵 ${formatMoney(h.amount)}\n📝 ${h.note}\n⏰ ${date}`,
+                parse_mode: 'Markdown',
+                reply_markup: {
+                    inline_keyboard: [[
+                        { text: '✅ Duyệt', callback_data: `approve:${h.user_id}:${h.id}:${h.amount}` },
+                        { text: '❌ Từ chối', callback_data: `reject:${h.user_id}:${h.id}:${h.amount}` }
+                    ]]
+                }
+            });
+        }
         return;
     }
 
     return sendTgMessage(chatId, '❓ Gõ /start để xem hướng dẫn.');
 }
 
-// ── Bot Callback Handler (inline buttons) ──
+// ── Bot Callback Handler ──
 async function handleTgCallback(callback) {
     const chatId = callback.message.chat.id.toString();
     const msgId = callback.message.message_id;
@@ -502,45 +459,44 @@ async function handleTgCallback(callback) {
     const amount = parseInt(amountStr);
 
     try {
-        const userRef = db.collection('users').doc(uid);
-        const userDoc = await userRef.get();
-        if (!userDoc.exists) {
-            return callTelegram('answerCallbackQuery', { callback_query_id: callback.id, text: '❌ User không tồn tại' });
-        }
-
-        const userData = userDoc.data();
-        const history = [...(userData.topupHistory || [])];
-        const idx = history.findIndex(h => h.id === reqId);
-
-        if (idx < 0) {
+        // Get topup request
+        const { data: topup } = await supabase
+            .from('topup_history').select('*').eq('id', reqId).single();
+        if (!topup) {
             return callTelegram('answerCallbackQuery', { callback_query_id: callback.id, text: '❌ Yêu cầu không tồn tại' });
         }
 
-        if (history[idx].status !== 'pending') {
-            await callTelegram('answerCallbackQuery', { callback_query_id: callback.id, text: `⚠️ Đã xử lý (${history[idx].status})` });
+        if (topup.status !== 'pending') {
+            await callTelegram('answerCallbackQuery', { callback_query_id: callback.id, text: `⚠️ Đã xử lý (${topup.status})` });
             await editTgMessage(chatId, msgId, callback.message.text + `\n\n⚠️ _Đã xử lý trước đó_`);
             return;
         }
 
-        history[idx].status = action === 'approve' ? 'approved' : 'rejected';
-        history[idx].processedAt = new Date().toISOString();
-
         if (action === 'approve') {
             const kcAmount = Math.floor(amount / KC_RATE);
-            await userRef.update({
-                diamond: admin.firestore.FieldValue.increment(kcAmount),
-                topupHistory: history
-            });
+
+            // Update topup status
+            await supabase.from('topup_history').update({
+                status: 'approved',
+                processed_at: new Date().toISOString()
+            }).eq('id', reqId);
+
+            // Add diamond to user
+            const { data: user } = await supabase.from('users').select('diamond, name').eq('id', uid).single();
+            await supabase.from('users').update({ diamond: (user.diamond || 0) + kcAmount }).eq('id', uid);
+
             await editTgMessage(chatId, msgId,
-                callback.message.text + `\n\n✅ *ĐÃ DUYỆT*\n💎 Đã cộng ${kcAmount} KC vào ví ${userData.name}`
+                callback.message.text + `\n\n✅ *ĐÃ DUYỆT*\n💎 Đã cộng ${kcAmount} KC vào ví ${user.name}`
             );
             await callTelegram('answerCallbackQuery', { callback_query_id: callback.id, text: '✅ Đã duyệt!' });
         } else {
-            history[idx].rejectReason = 'Admin từ chối';
-            await userRef.update({ topupHistory: history });
-            await editTgMessage(chatId, msgId,
-                callback.message.text + `\n\n❌ *ĐÃ TỪ CHỐI*`
-            );
+            await supabase.from('topup_history').update({
+                status: 'rejected',
+                reject_reason: 'Admin từ chối',
+                processed_at: new Date().toISOString()
+            }).eq('id', reqId);
+
+            await editTgMessage(chatId, msgId, callback.message.text + `\n\n❌ *ĐÃ TỪ CHỐI*`);
             await callTelegram('answerCallbackQuery', { callback_query_id: callback.id, text: '❌ Đã từ chối.' });
         }
     } catch (err) {
@@ -572,6 +528,6 @@ async function poll() {
 app.listen(PORT, () => {
     console.log(`🐷 Heo Đất Server: http://localhost:${PORT}`);
     console.log('📱 Telegram Bot @Heodat3322_bot đã kết nối');
-    console.log('🔒 API bảo mật đã sẵn sàng');
+    console.log('🔒 Supabase + API bảo mật đã sẵn sàng');
     poll();
 });

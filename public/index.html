@@ -961,21 +961,13 @@
 <!-- Toast -->
 <div class="toast-container" id="toastContainer"></div>
 
-<!-- Firebase SDK -->
-<script src="https://www.gstatic.com/firebasejs/12.12.0/firebase-app-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/12.12.0/firebase-auth-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/12.12.0/firebase-firestore-compat.js"></script>
+<!-- Supabase SDK -->
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
 <script>
-    const firebaseConfig = {
-        apiKey: "AIzaSyCuZ3xuwvzJYPXodVpPTmSxIKWKLRHM0m8",
-        authDomain: "heodat-1bbef.firebaseapp.com",
-        projectId: "heodat-1bbef",
-        storageBucket: "heodat-1bbef.firebasestorage.app",
-        messagingSenderId: "1073669660592",
-        appId: "1:1073669660592:web:1170f3bc80fe00ac2cc075",
-        measurementId: "G-YQDBDD3M8B"
-    };
-    firebase.initializeApp(firebaseConfig);
+    const supabaseClient = supabase.createClient(
+        'https://wnttyicooxyryzalrkmm.supabase.co',
+        'sb_publishable_q2aDiPLZAyMqsOgm2zBDBw_s_1h6LlN'
+    );
 </script>
 <script src="app.js"></script>
 </body>
