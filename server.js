@@ -31,6 +31,46 @@ const supabase = createClient(SUPABASE_URL, SUPABASE_SECRET_KEY, {
     auth: { autoRefreshToken: false, persistSession: false }
 });
 
+// Create atomic DB functions on startup
+(async () => {
+    try {
+        const { Client } = require('pg');
+        const pg = new Client({
+            connectionString: `postgresql://postgres:${encodeURIComponent('Huyphuc23k@')}@db.wnttyicooxyryzalrkmm.supabase.co:5432/postgres`,
+            ssl: { rejectUnauthorized: false }
+        });
+        await pg.connect();
+        await pg.query(`
+            CREATE OR REPLACE FUNCTION public.deduct_diamond(uid UUID, amount INT)
+            RETURNS INT LANGUAGE plpgsql AS $$
+            DECLARE new_bal INT;
+            BEGIN
+                UPDATE public.users SET diamond = diamond - amount WHERE id = uid AND diamond >= amount RETURNING diamond INTO new_bal;
+                IF NOT FOUND THEN RAISE EXCEPTION 'Insufficient balance'; END IF;
+                RETURN new_bal;
+            END; $$;
+
+            CREATE OR REPLACE FUNCTION public.add_diamond(uid UUID, amount INT)
+            RETURNS INT LANGUAGE plpgsql AS $$
+            DECLARE new_bal INT;
+            BEGIN
+                UPDATE public.users SET diamond = diamond + amount WHERE id = uid RETURNING diamond INTO new_bal;
+                RETURN new_bal;
+            END; $$;
+
+            CREATE OR REPLACE FUNCTION public.add_diamond_and_kc(uid UUID, amount INT)
+            RETURNS TABLE(new_diamond INT, new_kc INT) LANGUAGE plpgsql AS $$
+            BEGIN
+                RETURN QUERY UPDATE public.users SET diamond = diamond + amount, total_kc_earned = total_kc_earned + amount WHERE id = uid RETURNING diamond, total_kc_earned;
+            END; $$;
+        `);
+        await pg.end();
+        console.log('✅ Atomic DB functions ready');
+    } catch (err) {
+        console.warn('⚠️ DB functions init:', err.message);
+    }
+})();
+
 const PIGS = {
     3:  { label: 'Heo con', days: 90,  reward: 103 },
     6:  { label: 'Heo lứa', days: 180, reward: 107 },
@@ -127,16 +167,15 @@ app.post('/api/purchase', verifyAuth, async (req, res) => {
     const uid = req.user.id;
 
     try {
-        // Get user
-        const { data: user, error: userErr } = await supabase
-            .from('users').select('diamond').eq('id', uid).single();
-        if (userErr || !user) throw new Error('Tài khoản không tồn tại');
-        if (user.diamond < totalCost) throw new Error(`Không đủ KC! Cần ${totalCost} KC, bạn có ${user.diamond} KC`);
-
-        // Deduct diamond
-        const { error: updateErr } = await supabase
-            .from('users').update({ diamond: user.diamond - totalCost }).eq('id', uid);
-        if (updateErr) throw new Error('Lỗi cập nhật số dư');
+        // Atomic deduct diamond
+        const { data: newBal, error: deductErr } = await supabase.rpc('deduct_diamond', { uid, amount: totalCost });
+        if (deductErr) {
+            if (deductErr.message.includes('Insufficient')) {
+                const { data: user } = await supabase.from('users').select('diamond').eq('id', uid).single();
+                throw new Error(`Không đủ KC! Cần ${totalCost} KC, bạn có ${user?.diamond || 0} KC`);
+            }
+            throw new Error('Lỗi cập nhật số dư');
+        }
 
         // Create pigs
         const todayStr = today();
@@ -159,7 +198,7 @@ app.post('/api/purchase', verifyAuth, async (req, res) => {
             .from('pigs').insert(newPigs).select();
         if (pigErr) throw new Error('Lỗi tạo heo');
 
-        res.json({ success: true, pigs: insertedPigs, diamond: user.diamond - totalCost });
+        res.json({ success: true, pigs: insertedPigs, diamond: newBal });
     } catch (err) {
         res.status(400).json({ error: err.message });
     }
@@ -193,13 +232,12 @@ app.post('/api/sell', verifyAuth, async (req, res) => {
         // Mark pig as sold
         await supabase.from('pigs').update({ sold: true, sold_date: new Date().toISOString() }).eq('id', pigId);
 
-        // Update user diamond
-        const { data: user } = await supabase.from('users').select('diamond, total_kc_earned').eq('id', uid).single();
-        const newDiamond = (user.diamond || 0) + reward;
-        const newTotalKC = (user.total_kc_earned || 0) + reward;
-        await supabase.from('users').update({ diamond: newDiamond, total_kc_earned: newTotalKC }).eq('id', uid);
+        // Atomic add diamond + KC
+        const { data: updated, error: addErr } = await supabase.rpc('add_diamond_and_kc', { uid, amount: reward });
+        if (addErr) throw new Error('Lỗi cập nhật số dư');
+        const row = updated[0];
 
-        res.json({ success: true, reward, pigName: pig.name, diamond: newDiamond, totalKCEarned: newTotalKC });
+        res.json({ success: true, reward, pigName: pig.name, diamond: row.new_diamond, totalKCEarned: row.new_kc });
     } catch (err) {
         res.status(400).json({ error: err.message });
     }
@@ -276,16 +314,22 @@ app.post('/api/transfer', verifyAuth, async (req, res) => {
         const recipient = recipients[0];
         if (recipient.id === uid) return res.status(400).json({ error: 'Không thể chuyển cho chính mình' });
 
-        // Get sender
+        // Get sender email/name for response
         const { data: sender } = await supabase
-            .from('users').select('diamond, email, name').eq('id', uid).single();
-        if (sender.diamond < amount) throw new Error(`Không đủ KC! Bạn có ${sender.diamond} KC`);
+            .from('users').select('email, name').eq('id', uid).single();
 
-        // Execute transfer
-        await supabase.from('users').update({ diamond: sender.diamond - amount }).eq('id', uid);
+        // Atomic deduct from sender
+        const { data: senderBal, error: deductErr } = await supabase.rpc('deduct_diamond', { uid, amount });
+        if (deductErr) {
+            if (deductErr.message.includes('Insufficient')) {
+                const { data: s } = await supabase.from('users').select('diamond').eq('id', uid).single();
+                throw new Error(`Không đủ KC! Bạn có ${s?.diamond || 0} KC`);
+            }
+            throw new Error('Lỗi trừ KC');
+        }
 
-        const { data: recipFull } = await supabase.from('users').select('diamond').eq('id', recipient.id).single();
-        await supabase.from('users').update({ diamond: (recipFull.diamond || 0) + amount }).eq('id', recipient.id);
+        // Atomic add to recipient
+        await supabase.rpc('add_diamond', { uid: recipient.id, amount });
 
         // Record transfer
         const { data: transfer } = await supabase.from('transfers').insert({
@@ -307,7 +351,7 @@ app.post('/api/transfer', verifyAuth, async (req, res) => {
                 note,
                 date: transfer.created_at
             },
-            diamond: sender.diamond - amount
+            diamond: senderBal
         });
     } catch (err) {
         res.status(400).json({ error: err.message });
@@ -510,9 +554,9 @@ async function handleTgCallback(callback) {
                 processed_at: new Date().toISOString()
             }).eq('id', reqId);
 
-            // Add diamond to user
-            const { data: user } = await supabase.from('users').select('diamond, name').eq('id', uid).single();
-            await supabase.from('users').update({ diamond: (user.diamond || 0) + kcAmount }).eq('id', uid);
+            // Add diamond to user (atomic)
+            const { data: user } = await supabase.from('users').select('name').eq('id', uid).single();
+            await supabase.rpc('add_diamond', { uid, amount: kcAmount });
 
             await editTgMessage(chatId, msgId,
                 callback.message.text + `\n\n✅ *ĐÃ DUYỆT*\n💎 Đã cộng ${kcAmount} KC vào ví ${user.name}`

@@ -77,13 +77,11 @@ function saveUser(data) {
     supabaseClient.auth.getSession().then(({ data: { session } }) => {
         if (session) {
             supabaseClient.from('users').update({
-                total_cares: data.totalCares || 0,
                 last_login: data.lastLogin,
                 achievements: data.achievements || []
             }).eq('id', session.user.id).then(({ error }) => {
                 if (error) {
                     console.error('Lỗi lưu:', error);
-                    showToast('⚠️', 'Không thể lưu dữ liệu. Kiểm tra kết nối mạng!');
                 }
             });
         }
@@ -241,7 +239,7 @@ async function handleRegister(e) {
             : ('Lỗi: ' + (err.message || err));
         showToast('⚠️', msg);
     } finally {
-        if (btn) { btn.disabled = false; btn.textContent = 'Đăng ký 🐷'; }
+        if (btn) { btn.disabled = false; btn.textContent = 'Tạo trại heo 🏠'; }
     }
 }
 
@@ -391,7 +389,7 @@ function renderFarm() {
 
     // Achievements
     const unlocked = checkAchievements(d);
-    $('statAchievements').textContent = `${unlocked.length}/9`;
+    $('statAchievements').textContent = `${unlocked.length}/${CONFIG.ACHIEVEMENTS.length}`;
 
     // Notifications
     const notifArea = $('farmNotifications');
@@ -642,7 +640,7 @@ async function handleTransfer(e) {
 function renderTransferHistory() {
     if (!currentUser) return;
     const list = $('transferHistoryList');
-    const transfers = (currentUser.transfers || []).slice().reverse();
+    const transfers = (currentUser.transfers || []).slice();
 
     if (transfers.length === 0) {
         list.innerHTML = '<p class="transfer-empty">Chưa có giao dịch nào</p>';
