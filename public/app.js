@@ -8,17 +8,10 @@ const CONFIG = {
     PIG_PRICE_KC: 100,      // 100 KC / con heo
     KC_RATE: 1000,           // 1 KC = 1,000 VNĐ
     PIGS: {
-        3:  { label: 'Heo con',  emoji: '🐷', days: 90,  rate: 5.5, reward: 101 },
-        6:  { label: 'Heo lứa',  emoji: '🐖', days: 180, rate: 6.5, reward: 103 },
-        12: { label: 'Heo nái',  emoji: '🐗', days: 365, rate: 7.5, reward: 108 }
+        3:  { label: 'Heo con',  emoji: '🐷', days: 90,  rate: 10,   reward: 103 },
+        6:  { label: 'Heo lứa',  emoji: '🐖', days: 180, rate: 13.5, reward: 107 },
+        12: { label: 'Heo nái',  emoji: '🐗', days: 365, rate: 18,   reward: 118 }
     },
-    DAILY_REWARD: 1,
-    PIG_NAMES: [
-        'Heo Bông','Heo Mập','Heo Xinh','Heo Cute','Heo Hồng','Heo Vui','Heo Yêu',
-        'Heo Béo','Heo Phúc','Heo Lộc','Heo Tài','Heo Đẹp','Heo Mochi','Heo Bánh',
-        'Heo Sữa','Heo Đậu','Heo Bí','Heo Cam','Heo Cherry','Heo Mint','Heo Kẹo',
-        'Heo Nắng','Heo Mưa','Heo Gió','Heo Trăng','Heo Sao','Heo Hoa','Heo Lá'
-    ],
     ACHIEVEMENTS: [
         { id: 'first_pig',   icon: '🐷', title: 'Chủ trại mới',     desc: 'Mua con heo đầu tiên', check: d => d.pigs.length > 0 },
         { id: 'five_pigs',   icon: '🐖', title: '5 con heo',        desc: 'Nuôi 5 con heo cùng lúc', check: d => d.pigs.filter(p=>!p.sold).length >= 5 },
@@ -27,7 +20,6 @@ const CONFIG = {
         { id: 'ten_sell',    icon: '🏆', title: 'Bán 10 heo',       desc: 'Bán tổng cộng 10 con heo', check: d => d.pigs.filter(p=>p.sold).length >= 10 },
         { id: 'kc_100',      icon: '💰', title: '100 KC',           desc: 'Tích lũy 100 kim cương', check: d => d.totalKCEarned >= 100 },
         { id: 'kc_1000',     icon: '🤑', title: '1,000 KC',         desc: 'Tích lũy 1,000 kim cương', check: d => d.totalKCEarned >= 1000 },
-        { id: 'daily_7',     icon: '📅', title: '7 ngày liên tiếp',  desc: 'Đăng nhập 7 ngày liên tiếp', check: d => d.loginStreak >= 7 },
         { id: 'care_master', icon: '❤️', title: 'Chăm sóc tốt',     desc: 'Chăm sóc 50 lần', check: d => d.totalCares >= 50 }
     ],
     LEVEL_THRESHOLDS: [0, 5, 15, 30, 60, 100, 200, 500, 1000]
@@ -87,15 +79,6 @@ function getMood(health, happiness) {
 
 function daysBetween(d1, d2) {
     return Math.floor((d2 - d1) / (1000 * 60 * 60 * 24));
-}
-
-function randomName() {
-    return CONFIG.PIG_NAMES[Math.floor(Math.random() * CONFIG.PIG_NAMES.length)] + ' #' + Math.floor(Math.random() * 900 + 100);
-}
-
-function genId() {
-    if (typeof crypto !== 'undefined' && crypto.randomUUID) return crypto.randomUUID();
-    return Date.now().toString(36) + Math.random().toString(36).substring(2, 9);
 }
 
 function today() {
@@ -185,9 +168,7 @@ async function handleRegister(e) {
             pigs: [],
             totalKCEarned: 0,
             totalCares: 0,
-            loginStreak: 1,
             lastLogin: today(),
-            lastDailyReward: null,
             achievements: [],
             createdAt: new Date().toISOString()
         };
@@ -221,15 +202,7 @@ async function handleLogin(e) {
         await auth.signInWithEmailAndPassword(email, password);
         const user = await loadUserFromDb();
         if (user) {
-            const lastLogin = user.lastLogin;
-            const todayStr = today();
-            if (lastLogin !== todayStr) {
-                const lastDate = new Date(lastLogin);
-                const todayDate = new Date(todayStr);
-                const diff = daysBetween(lastDate, todayDate);
-                user.loginStreak = diff === 1 ? user.loginStreak + 1 : 1;
-                user.lastLogin = todayStr;
-            }
+            user.lastLogin = today();
             saveUser(user);
         }
         closeModal('loginModal');
@@ -352,14 +325,6 @@ function renderFarm() {
     const lvl = getLevel(d);
     $('farmLevel').textContent = `Lv.${lvl.level} — ${lvl.title}`;
     $('walletBalance').textContent = d.diamond;
-
-    // Daily reward
-    const todayStr = today();
-    if (d.lastDailyReward !== todayStr) {
-        $('dailyReward').style.display = 'flex';
-    } else {
-        $('dailyReward').style.display = 'none';
-    }
 
     // Stats
     const activePigs = d.pigs.filter(p => !p.sold);
@@ -766,32 +731,40 @@ function openCare(pigId) {
     openModal('careModal');
 }
 
-function feedPig() {
-    if (!currentUser || !currentPigId) return;
+async function feedPig() {
+    if (!currentUser || !currentPigId || !auth.currentUser) return;
     const pig = currentUser.pigs.find(p => p.id === currentPigId);
     if (!pig || pig.lastFed === today()) return;
 
-    pig.lastFed = today();
-    pig.health = Math.min(100, pig.health + 20);
-    currentUser.totalCares = (currentUser.totalCares || 0) + 1;
-    saveUser(currentUser);
-    showToast('🍽️', `Đã cho ${pig.name} ăn!`);
-    openCare(currentPigId);
-    renderFarm();
+    try {
+        const result = await callApi('/api/care', { pigId: currentPigId, action: 'feed' });
+        const idx = currentUser.pigs.findIndex(p => p.id === currentPigId);
+        if (idx >= 0) currentUser.pigs[idx] = result.pig;
+        currentUser.totalCares = result.totalCares;
+        showToast('🍽️', `Đã cho ${pig.name} ăn!`);
+        openCare(currentPigId);
+        renderFarm();
+    } catch (err) {
+        showToast('❌', err.message || 'Lỗi cho ăn');
+    }
 }
 
-function cleanPig() {
-    if (!currentUser || !currentPigId) return;
+async function cleanPig() {
+    if (!currentUser || !currentPigId || !auth.currentUser) return;
     const pig = currentUser.pigs.find(p => p.id === currentPigId);
     if (!pig || pig.lastCleaned === today()) return;
 
-    pig.lastCleaned = today();
-    pig.happiness = Math.min(100, pig.happiness + 20);
-    currentUser.totalCares = (currentUser.totalCares || 0) + 1;
-    saveUser(currentUser);
-    showToast('🧹', `Đã dọn chuồng cho ${pig.name}!`);
-    openCare(currentPigId);
-    renderFarm();
+    try {
+        const result = await callApi('/api/care', { pigId: currentPigId, action: 'clean' });
+        const idx = currentUser.pigs.findIndex(p => p.id === currentPigId);
+        if (idx >= 0) currentUser.pigs[idx] = result.pig;
+        currentUser.totalCares = result.totalCares;
+        showToast('🧹', `Đã dọn chuồng cho ${pig.name}!`);
+        openCare(currentPigId);
+        renderFarm();
+    } catch (err) {
+        showToast('❌', err.message || 'Lỗi dọn chuồng');
+    }
 }
 
 async function sellCurrentPig() {
@@ -819,24 +792,6 @@ async function sellCurrentPig() {
     } catch (err) {
         showToast('❌', err.message || 'Lỗi bán heo');
         if (btn) { btn.disabled = false; btn.textContent = `💎 Bán heo nhận ${reward} KC`; }
-    }
-}
-
-// ── Daily Reward ──
-async function claimDailyReward() {
-    if (!currentUser || !auth.currentUser) return;
-    const todayStr = today();
-    if (currentUser.lastDailyReward === todayStr) return;
-
-    try {
-        const result = await callApi('/api/daily-reward', {});
-        currentUser.diamond = result.diamond;
-        currentUser.totalKCEarned = result.totalKCEarned;
-        currentUser.lastDailyReward = todayStr;
-        showToast('🎁', `Nhận thưởng ngày ${currentUser.loginStreak}: +${result.bonus} KC!`);
-        renderFarm();
-    } catch (err) {
-        showToast('❌', err.message || 'Lỗi nhận thưởng');
     }
 }
 
@@ -1003,24 +958,6 @@ function renderAchievements() {
     }).join('');
 }
 
-// ── Hero Animated Counters ──
-function animateCounters() {
-    qsa('.stat-number[data-count]').forEach(el => {
-        const target = parseInt(el.dataset.count);
-        const duration = 2000;
-        const startTime = performance.now();
-
-        function update(currentTime) {
-            const elapsed = currentTime - startTime;
-            const progress = Math.min(elapsed / duration, 1);
-            const eased = 1 - Math.pow(1 - progress, 3);
-            el.textContent = Math.floor(target * eased).toLocaleString('vi-VN');
-            if (progress < 1) requestAnimationFrame(update);
-        }
-        requestAnimationFrame(update);
-    });
-}
-
 // ── FAQ ──
 function toggleFaq(el) {
     const wasActive = el.classList.contains('active');
@@ -1103,7 +1040,6 @@ auth.onAuthStateChanged(async (user) => {
                 currentUser.topupHistory = serverData.topupHistory;
                 currentUser.transfers = serverData.transfers;
                 currentUser.totalKCEarned = serverData.totalKCEarned;
-                currentUser.lastDailyReward = serverData.lastDailyReward;
                 // Re-render if farm modal is open
                 if ($('farmModal') && $('farmModal').classList.contains('active')) renderFarm();
             }

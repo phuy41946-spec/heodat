@@ -17,12 +17,13 @@ service cloud.firestore {
       allow create: if request.auth != null && request.auth.uid == userId
         && request.resource.data.diamond == 0;
 
-      // Cho phép update nhưng KHÔNG cho thay đổi diamond, pigs, loginStreak, topupHistory, transfers
+      // Cho phép update nhưng KHÔNG cho thay đổi diamond, pigs, topupHistory, transfers
       // (Chỉ Admin SDK trên server mới được thay đổi các field này)
       allow update: if request.auth != null && request.auth.uid == userId
         && request.resource.data.diamond == resource.data.diamond
         && request.resource.data.pigs == resource.data.pigs
-        && request.resource.data.loginStreak == resource.data.loginStreak;
+        && request.resource.data.topupHistory == resource.data.topupHistory
+        && request.resource.data.transfers == resource.data.transfers;
     }
 
     // Chặn tất cả các collection khác

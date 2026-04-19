@@ -22,13 +22,12 @@ if (!BOT_TOKEN || !ADMIN_CHAT_ID) {
 }
 
 const PIGS = {
-    3:  { label: 'Heo con', days: 90,  reward: 101 },
-    6:  { label: 'Heo lứa', days: 180, reward: 103 },
-    12: { label: 'Heo nái', days: 365, reward: 108 }
+    3:  { label: 'Heo con', days: 90,  reward: 103 },
+    6:  { label: 'Heo lứa', days: 180, reward: 107 },
+    12: { label: 'Heo nái', days: 365, reward: 118 }
 };
 const PIG_PRICE_KC = 100; // 100 KC / con heo
 const KC_RATE = 1000;     // 1 KC = 1,000 VNĐ
-const DAILY_REWARD = 1;
 const PIG_NAMES = [
     'Heo Bông','Heo Mập','Heo Xinh','Heo Cute','Heo Hồng','Heo Vui','Heo Yêu',
     'Heo Béo','Heo Phúc','Heo Lộc','Heo Tài','Heo Đẹp','Heo Mochi','Heo Bánh',
@@ -206,6 +205,53 @@ app.post('/api/sell', verifyAuth, async (req, res) => {
     }
 });
 
+// ── POST /api/care — Cho ăn / Tắm heo ──
+app.post('/api/care', verifyAuth, async (req, res) => {
+    const uid = req.user.uid;
+    const { pigId, action } = req.body;
+
+    if (!pigId || !['feed', 'clean'].includes(action)) {
+        return res.status(400).json({ error: 'Thiếu thông tin chăm sóc' });
+    }
+
+    try {
+        const result = await db.runTransaction(async (t) => {
+            const userRef = db.collection('users').doc(uid);
+            const doc = await t.get(userRef);
+            if (!doc.exists) throw new Error('Tài khoản không tồn tại');
+
+            const data = doc.data();
+            const pigs = [...(data.pigs || [])];
+            const idx = pigs.findIndex(p => p.id === pigId);
+
+            if (idx < 0) throw new Error('Không tìm thấy heo');
+            if (pigs[idx].sold) throw new Error('Heo đã được bán rồi');
+
+            const pig = { ...pigs[idx] };
+            const nowStr = new Date().toISOString();
+
+            if (action === 'feed') {
+                pig.lastFed = nowStr;
+                pig.health = Math.min(100, (pig.health || 50) + 20);
+            } else {
+                pig.lastCleaned = nowStr;
+                pig.happiness = Math.min(100, (pig.happiness || 50) + 20);
+            }
+
+            pigs[idx] = pig;
+            const totalCares = (data.totalCares || 0) + 1;
+
+            t.update(userRef, { pigs, totalCares });
+
+            return { pig, totalCares };
+        });
+
+        res.json({ success: true, ...result });
+    } catch (err) {
+        res.status(400).json({ error: err.message });
+    }
+});
+
 // ── POST /api/transfer — Chuyển KC ──
 app.post('/api/transfer', verifyAuth, async (req, res) => {
     const uid = req.user.uid;
@@ -217,8 +263,20 @@ app.post('/api/transfer', verifyAuth, async (req, res) => {
 
     if (!recipientEmail) return res.status(400).json({ error: 'Vui lòng nhập email người nhận' });
     if (!amount || amount < 1) return res.status(400).json({ error: 'Số KC phải lớn hơn 0' });
+    if (amount > 10000) return res.status(400).json({ error: 'Tối đa chuyển 10,000 KC mỗi lần' });
 
     try {
+        // Rate limit: check recent transfers (max 5 per hour)
+        const senderDoc = await db.collection('users').doc(uid).get();
+        if (senderDoc.exists) {
+            const transfers = senderDoc.data().transfers || [];
+            const oneHourAgo = Date.now() - 60 * 60 * 1000;
+            const recentSent = transfers.filter(t => t.type === 'sent' && new Date(t.date).getTime() > oneHourAgo);
+            if (recentSent.length >= 5) {
+                return res.status(429).json({ error: 'Chỉ được chuyển tối đa 5 lần/giờ. Vui lòng đợi.' });
+            }
+        }
+
         // Find recipient
         const snap = await db.collection('users').where('email', '==', recipientEmail).get();
         if (snap.empty) return res.status(404).json({ error: 'Không tìm thấy tài khoản với email này' });
@@ -340,49 +398,6 @@ app.post('/api/topup', verifyAuth, async (req, res) => {
     } catch (err) {
         console.error('Topup error:', err);
         res.status(500).json({ error: 'Lỗi server, vui lòng thử lại' });
-    }
-});
-
-// ── POST /api/daily-reward — Nhận thưởng hàng ngày ──
-app.post('/api/daily-reward', verifyAuth, async (req, res) => {
-    const uid = req.user.uid;
-
-    try {
-        const result = await db.runTransaction(async (t) => {
-            const userRef = db.collection('users').doc(uid);
-            const doc = await t.get(userRef);
-            if (!doc.exists) throw new Error('Tài khoản không tồn tại');
-
-            const data = doc.data();
-            const todayStr = today();
-
-            if (data.lastDailyReward === todayStr) throw new Error('Đã nhận thưởng hôm nay rồi');
-
-            // Calculate streak server-side (not trusting client loginStreak)
-            const yesterday = new Date();
-            yesterday.setDate(yesterday.getDate() - 1);
-            const yesterdayStr = yesterday.toISOString().split('T')[0];
-            const streak = (data.lastDailyReward === yesterdayStr) ? Math.min((data.loginStreak || 0) + 1, 30) : 1;
-
-            const bonus = DAILY_REWARD * streak;
-
-            t.update(userRef, {
-                diamond: admin.firestore.FieldValue.increment(bonus),
-                totalKCEarned: admin.firestore.FieldValue.increment(bonus),
-                lastDailyReward: todayStr,
-                loginStreak: streak
-            });
-
-            return {
-                bonus,
-                diamond: (data.diamond || 0) + bonus,
-                totalKCEarned: (data.totalKCEarned || 0) + bonus
-            };
-        });
-
-        res.json({ success: true, ...result });
-    } catch (err) {
-        res.status(400).json({ error: err.message });
     }
 });
 
