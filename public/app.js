@@ -277,17 +277,27 @@ async function handleLogout() {
 
 // ── UI Updates ──
 function updateUI() {
-    // Update header
+    // Update header (desktop)
     const actions = $('headerActions');
+    // Update mobile menu
+    const mobileActions = $('mobileMenuActions');
     if (currentUser) {
         actions.innerHTML = `
             <button class="btn btn-primary" onclick="openFarm()">🐷 Trại heo</button>
             <button class="btn btn-outline" onclick="handleLogout()">Đăng xuất</button>
         `;
+        if (mobileActions) mobileActions.innerHTML = `
+            <button class="btn btn-primary btn-block" onclick="openFarm();toggleMobileMenu()">🐷 Trại heo</button>
+            <button class="btn btn-outline btn-block" onclick="handleLogout();toggleMobileMenu()">Đăng xuất</button>
+        `;
     } else {
         actions.innerHTML = `
             <button class="btn btn-outline" onclick="openModal('loginModal')">Đăng nhập</button>
             <button class="btn btn-primary" onclick="openModal('registerModal')">Đăng ký</button>
+        `;
+        if (mobileActions) mobileActions.innerHTML = `
+            <button class="btn btn-outline btn-block" onclick="openModal('loginModal');toggleMobileMenu()">Đăng nhập</button>
+            <button class="btn btn-primary btn-block" onclick="openModal('registerModal');toggleMobileMenu()">Đăng ký</button>
         `;
     }
 
